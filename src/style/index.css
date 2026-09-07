@@ -1,0 +1,259 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=42dot+Sans:wght@300..800&display=swap");
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+/* 기본 리셋 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+@theme {
+  /* Colors */
+  --color-accent-pink: #ff73c0;
+  --color-light-pink: #ffc4e5;
+  --color-base-pink: #ffe9f3;
+
+  --color-black: #222222;
+  --color-dark-gray: #7c7c7c;
+  --color-gray: #cdcdcd;
+  --color-light-text: #93818c;
+  --color-background: #fbf8f6;
+
+  --color-important: #fe2764;
+}
+
+@layer components {
+  /* =========================================================
+     1. 모바일 기본값 (Mobile First: ~767px)
+     - 모바일(360px~420px)에서 글자 넘침 방지 및 한글 가독성 확보
+  ========================================================= */
+  /* Accent: Instrument Serif */
+  .display1 {
+    font-family: "Instrument Serif", serif;
+    font-weight: 400;
+    font-size: 38px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  .display2 {
+    font-family: "Instrument Serif", serif;
+    font-weight: 400;
+    font-size: 28px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+  }
+  .display3 {
+    font-family: "Instrument Serif", serif;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  /* Primary: 42dot Sans */
+  .body1 {
+    font-family: "42dot Sans", sans-serif;
+    font-size: 18px;
+    line-height: 1.4;
+  }
+  .body2 {
+    font-family: "42dot Sans", sans-serif;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  .body3 {
+    font-family: "42dot Sans", sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .body4 {
+    font-family: "42dot Sans", sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  /* Secondary: Pretendard */
+  .caption1 {
+    font-family: "Pretendard", sans-serif;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  .caption2 {
+    font-family: "Pretendard", sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .caption3 {
+    font-family: "Pretendard", sans-serif;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  /* =========================================================
+     2. 태블릿 구간 (md: 768px ~ 1023px)
+  ========================================================= */
+  @media (min-width: 768px) {
+    /* Accent */
+    .display1 {
+      font-size: 52px;
+      letter-spacing: -0.01em;
+    }
+    .display2 {
+      font-size: 42px;
+    }
+    .display3 {
+      font-size: 26px;
+    }
+
+    /* Primary */
+    .body1 {
+      font-size: 24px;
+    }
+    .body2 {
+      font-size: 20px;
+    }
+    .body3 {
+      font-size: 17px;
+    }
+    .body4 {
+      font-size: 15px;
+    }
+
+    /* Secondary */
+    .caption1 {
+      font-size: 20px;
+    }
+    .caption2 {
+      font-size: 17px;
+    }
+    .caption3 {
+      font-size: 15px;
+    }
+  }
+
+  /* =========================================================
+     3. PC / 데스크톱 구간 (lg: 1024px ~) 원본 사이즈
+  ========================================================= */
+  @media (min-width: 1024px) {
+    /* Accent */
+    .display1 {
+      font-size: 72px;
+    }
+    .display2 {
+      font-size: 56px;
+    }
+    .display3 {
+      font-size: 28px;
+    }
+
+    /* Primary */
+    .body1 {
+      font-size: 28px;
+    }
+    .body2 {
+      font-size: 24px;
+    }
+    .body3 {
+      font-size: 20px;
+    }
+    .body4 {
+      font-size: 18px;
+    }
+
+    /* Secondary */
+    .caption1 {
+      font-size: 24px;
+    }
+    .caption2 {
+      font-size: 20px;
+    }
+    .caption3 {
+      font-size: 18px;
+    }
+  }
+}
+
+/* 기본 높이 설정 */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* 기본 body 설정 */
+body {
+  margin: 0;
+  line-height: 1.5;
+  font-family:
+    "Pretendard",
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    Roboto,
+    sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 22px;
+  letter-spacing: -0.01em;
+  /* 자간 -1% */
+  font-optical-sizing: auto;
+  background-color: #ffffff;
+  color: var(--black);
+}
+
+/* 미디어 기본 설정 */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* 버튼 기본 */
+button {
+  cursor: pointer;
+}
+
+/* 폼 요소 */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+/* 링크 기본 */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 리스트 기본 */
+ul,
+ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 25s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
