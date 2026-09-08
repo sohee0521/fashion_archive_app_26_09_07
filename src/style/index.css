@@ -54,39 +54,39 @@
   /* Primary: 42dot Sans */
   .body1 {
     font-family: "42dot Sans", sans-serif;
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1.4;
   }
   .body2 {
     font-family: "42dot Sans", sans-serif;
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1.4;
   }
   .body3 {
     font-family: "42dot Sans", sans-serif;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.45;
   }
   .body4 {
     font-family: "42dot Sans", sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.45;
   }
 
   /* Secondary: Pretendard */
   .caption1 {
     font-family: "Pretendard", sans-serif;
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1.4;
   }
   .caption2 {
     font-family: "Pretendard", sans-serif;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.4;
   }
   .caption3 {
     font-family: "Pretendard", sans-serif;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.45;
   }
 
@@ -114,10 +114,10 @@
       font-size: 20px;
     }
     .body3 {
-      font-size: 17px;
+      font-size: 18px;
     }
     .body4 {
-      font-size: 15px;
+      font-size: 16px;
     }
 
     /* Secondary */
@@ -125,10 +125,10 @@
       font-size: 20px;
     }
     .caption2 {
-      font-size: 17px;
+      font-size: 18px;
     }
     .caption3 {
-      font-size: 15px;
+      font-size: 16px;
     }
   }
 
@@ -141,7 +141,7 @@
       font-size: 72px;
     }
     .display2 {
-      font-size: 56px;
+      font-size: 48px;
     }
     .display3 {
       font-size: 28px;
@@ -149,27 +149,27 @@
 
     /* Primary */
     .body1 {
-      font-size: 28px;
-    }
-    .body2 {
       font-size: 24px;
     }
-    .body3 {
+    .body2 {
       font-size: 20px;
     }
-    .body4 {
+    .body3 {
       font-size: 18px;
+    }
+    .body4 {
+      font-size: 16px;
     }
 
     /* Secondary */
     .caption1 {
-      font-size: 24px;
-    }
-    .caption2 {
       font-size: 20px;
     }
-    .caption3 {
+    .caption2 {
       font-size: 18px;
+    }
+    .caption3 {
+      font-size: 16px;
     }
   }
 }

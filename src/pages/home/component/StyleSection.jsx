@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { MoveRight } from "lucide-react";
 
 export default function StyleSection() {
   return (
@@ -63,7 +64,9 @@ export default function StyleSection() {
           className=" z-10 bg-black !text-white px-[20px] px-[20px] py-[10px] display3 flex items-center gap-3 shrink-0 hover:bg-white hover:!text-black border border-black transition-all duration-200"
         >
           See More Insight
-          <span className="font-light">&rarr;</span>
+          <span className="">
+            <MoveRight strokeWidth={1.2} />
+          </span>
         </Link>
       </div>
     </section>

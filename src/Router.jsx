@@ -19,6 +19,7 @@ export default function Router() {
           <Route path="/archive" element={<Archive />} />
           <Route path="/itemDetail/:id" element={<ItemDetail />} />
           <Route path="/lookbook" element={<Lookbook />} />
+          <Route path="/newLookbook" element={<NewLookbook />} />
           <Route path="/newLookbook/:id" element={<NewLookbook />} />
           <Route path="/data" element={<Data />} />
 
