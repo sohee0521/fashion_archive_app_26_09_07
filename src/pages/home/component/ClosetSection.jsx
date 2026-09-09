@@ -6,7 +6,7 @@ import hanger from "../../../img/hanger.svg";
 export default function ClosetSection({ items, setIsFormOpen }) {
   const navigate = useNavigate();
 
-  // 캡처 속 5개 카드의 크기 및 위치 규격 (불변 유지)
+  // 5개 카드의 크기 및 위치 규격
   const emptyCardTemplates = [
     {
       width: "w-[210px]",
@@ -45,7 +45,6 @@ export default function ClosetSection({ items, setIsFormOpen }) {
     },
   ];
 
-  // 등록된 아이템 개수가 템플릿(5개)보다 많아지면 템플릿을 자동으로 순환 반복
   const totalSlots = Math.max(emptyCardTemplates.length, items.length);
 
   return (
@@ -57,10 +56,10 @@ export default function ClosetSection({ items, setIsFormOpen }) {
 
       {/* 헤더 타이틀 */}
       <div className="w-full mb-16 relative z-10 flex items-center gap-[5px] lg:px-[180px] sm:px-[100px] px-[50px]">
-        <h2 className="display1 text-black leading-none font-normal">
+        <h2 className="display1 text-black leading-none font-normal select-none">
           My Closet <span className="font-light">—</span>
         </h2>
-        <span className="body4 text-dark-gray tracking-tight">
+        <span className="body4 text-dark-gray tracking-tight select-none">
           Collect what you want
         </span>
       </div>
@@ -75,6 +74,10 @@ export default function ClosetSection({ items, setIsFormOpen }) {
                   emptyCardTemplates[slotIdx % emptyCardTemplates.length];
                 const item = items[slotIdx];
 
+                // 🔥 로컬스토리지에 저장된 첫 번째 디테일 이미지를 1순위로 채택
+                const displayImage =
+                  item?.detailImages?.[0] || item?.imageUrl || "";
+
                 return (
                   <div
                     key={`${loopIdx}-${slotIdx}`}
@@ -85,23 +88,21 @@ export default function ClosetSection({ items, setIsFormOpen }) {
                         setIsFormOpen(true);
                       }
                     }}
-                    className={`${tpl.width} ${tpl.height} ${tpl.translate} bg-white border border-gray/50 flex-shrink-0 flex flex-col items-center justify-center overflow-hidden transition-all duration-300 hover:border-accent-pink hover:shadow-md group`}
+                    className={`${tpl.width} ${tpl.height} ${tpl.translate} bg-white border border-gray/50 flex-shrink-0 flex flex-col items-center justify-center overflow-hidden transition-all duration-300 hover:border-accent-pink hover:shadow-md group select-none`}
                   >
                     {item ? (
                       // 1. 아이템이 채워진 슬롯
-                      item.imageUrl ? (
-                        // 1-A. 이미지가 있을 때
+                      displayImage ? (
+                        // 1-A. 첫 번째 디테일 이미지(or imageUrl)가 있을 때
                         <img
-                          src={item.imageUrl}
+                          src={displayImage}
                           alt={item.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
-                        // 1-B. 이미지가 없을 때: 캡처와 똑같은 핑크 삼각 옷걸이 + 핑크 상품명
+                        // 1-B. 등록된 이미지가 전혀 없을 때: 핑크 배경 + 옷걸이 + 상품명
                         <div className="w-full h-full bg-base-pink/60 flex flex-col items-center justify-center gap-2.5 p-4 text-center select-none">
-                          {/* 핑크색 옷걸이 벡터 아이콘 */}
                           <img src={hanger} alt="Hanger" />
-
                           <span className="caption3 text-accent-pink tracking-tight font-normal line-clamp-2">
                             {item.title}
                           </span>
@@ -116,7 +117,7 @@ export default function ClosetSection({ items, setIsFormOpen }) {
                           +
                         </div>
                         <span
-                          className={`${tpl.textSize} text-accent-pink tracking-tight font-sans`}
+                          className={`${tpl.textSize} text-accent-pink tracking-tight`}
                         >
                           Add Your Item
                         </span>

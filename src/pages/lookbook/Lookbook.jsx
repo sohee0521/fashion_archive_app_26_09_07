@@ -12,27 +12,27 @@ const LOOK_LAYOUT_PRESETS = {
     "bottom-4 right-4", // 우하단
   ],
   3: [
-    "top-[40%] -translate-y-1/2 left-3", // 좌측 1개
-    "top-3 right-3", // 우상단
-    "bottom-3 right-3", // 우하단
+    "top-[50%] -translate-y-1/2 left-3", // 좌측 1개
+    "top-[-15px] right-3", // 우상단
+    "bottom-0 right-3", // 우하단
   ],
   4: [
-    "top-12 left-4", // 좌상단
-    "bottom-2 left-4", // 좌하단
-    "top-2 right-4", // 우상단
-    "bottom-12 right-4", // 우하단
+    "top-0 left-4", // 좌상단
+    "bottom-4 left-4", // 좌하단
+    "top-4 right-4", // 우상단
+    "bottom-0 right-4", // 우하단
   ],
   5: [
-    "top-[-10px] left-2", // 상단 좌
-    "top-[-10px] right-2", // 상단 우
+    "top-[-20px] left-0", // 상단 좌
+    "top-[-20px] right-0", // 상단 우
     "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2", // 정중앙
-    "bottom-[-10px] left-2", // 하단 좌
-    "bottom-[-10px] right-2", // 하단 우
+    "bottom-[-20px] left-0", // 하단 좌
+    "bottom-[-20px] right-0", // 하단 우
   ],
   6: [
-    "top-[-30px] left-1/2 -translate-x-1/2", // 상단 중앙
+    "top-[-40px] left-1/2 -translate-x-1/2", // 상단 중앙
     "top-[40px] left-[-15px]", // 중간 좌
-    "top-[80px] left-[100px] -translate-x-1/2", // 정가운데
+    "top-[65px] left-[100px] -translate-x-1/2", // 정가운데
     "top-[40px] right-[-5px]", // 중간 우
     "bottom-[-25px] left-3", // 하단 좌
     "bottom-[-25px] right-3", // 하단 우
@@ -44,16 +44,54 @@ export default function Lookbook() {
   const [lookbooks, setLookbooks] = useState([]);
 
   // 로컬스토리지에서 유저가 만든 룩북 목록 로드
+  // 로컬스토리지에서 룩북 목록 및 최신 아카이브 아이템 데이터 로드
   useEffect(() => {
-    const saved = localStorage.getItem("fitlog_lookbooks");
-    if (saved) {
+    let archiveItems = [];
+    try {
+      const savedItems = localStorage.getItem("fitlog_items");
+      if (savedItems) {
+        archiveItems = JSON.parse(savedItems);
+      }
+    } catch (err) {
+      console.error("아카이브 아이템 로드 실패:", err);
+    }
+
+    const savedLookbooks = localStorage.getItem("fitlog_lookbooks");
+    if (savedLookbooks) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(savedLookbooks);
         if (Array.isArray(parsed)) {
-          const formatted = parsed.map((lb, index) => ({
-            ...lb,
-            lookNo: `LOOK ${String(index + 1).padStart(2, "0")}`,
-          }));
+          const formatted = parsed.map((lb, index) => {
+            const refreshedItems = (lb.items || []).map((it) => {
+              // 🔥 String(id)로 타입 강제 일치시켜 원본 아이템 매칭
+              const matchedArchiveItem = archiveItems.find(
+                (arc) => String(arc.id) === String(it.id),
+              );
+
+              // 1순위: fitlog_items 원본의 detailImages[0]
+              // 2순위: fitlog_items 원본의 imageUrl
+              // 3순위: 룩북 자체에 저장되어 있던 it.detailImages[0]
+              // 4순위: 룩북 자체에 저장되어 있던 it.imageUrl
+              const resolvedImage =
+                matchedArchiveItem?.detailImages?.[0] ||
+                matchedArchiveItem?.imageUrl ||
+                it?.detailImages?.[0] ||
+                it?.imageUrl ||
+                "";
+
+              return {
+                ...it,
+                imageUrl: resolvedImage,
+              };
+            });
+
+            return {
+              ...lb,
+              lookNo: `LOOK ${String(index + 1).padStart(2, "0")}`,
+              items: refreshedItems,
+            };
+          });
+
           setLookbooks(formatted);
           return;
         }
@@ -69,14 +107,14 @@ export default function Lookbook() {
       {/* 1. 상단 타이틀 배너 */}
       <section className="w-full bg-base-pink pt-12 sm:pt-16 pb-10 sm:pb-12 px-6 sm:px-[100px] lg:px-[180px] relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div
-          className="absolute -left-12 sm:left-4 lg:left-[100px] top-1/2 -translate-y-[45%] w-[380px] h-[190px] rounded-[50%] pointer-events-none select-none z-0"
+          className="absolute -left-5 sm:left-15 lg:left-[100px] top-1/3 sm:top-1/2 -translate-y-[45%] w-[200px] h-[100px] md:w-[250px] md:h-[120px] lg:w-[360px] lg:h-[180px] rounded-[50%] pointer-events-none select-none z-0"
           style={{
             background:
               "radial-gradient(ellipse at center, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.6) 35%, rgba(255, 233, 243, 0) 70%)",
           }}
         />
 
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4">
+        <div className="relative z-10 flex items-center gap-[10px] sm:gap-4">
           <h1 className="display1 text-accent-pink font-normal leading-none italic select-none">
             LookBook
           </h1>
@@ -102,18 +140,18 @@ export default function Lookbook() {
         <img
           src={Stars}
           alt=""
-          className="absolute right-[5%] md:right-[20%] top-[180px] w-[180px] md:w-[200px] opacity-80 pointer-events-none select-none z-0"
+          className="absolute right-[5%] md:right-[20%] top-[2%] sm:top-[10%] w-[180px] md:w-[200px] opacity-80 pointer-events-none select-none z-0"
         />
         <img
           src={Stars}
           alt=""
-          className="absolute left-[8%] md:left-[18%] top-[1300px] w-[180px] md:w-[200px] opacity-75 pointer-events-none select-none z-0"
+          className="absolute left-[8%] md:left-[18%] top-[87%] w-[180px] md:w-[200px] opacity-75 pointer-events-none select-none z-0"
         />
 
         {/* 데이터가 없을 때 표시되는 빈 상태 */}
         {lookbooks.length === 0 ? (
           <div className="relative z-10 w-full py-24 flex flex-col items-center justify-center gap-4 text-center">
-            <p className="body2 text-gray text-base sm:text-lg">
+            <p className="caption3 text-dark-gray ">
               아직 등록된 룩북이 없습니다.
             </p>
             <button
@@ -122,7 +160,7 @@ export default function Lookbook() {
               className="border border-black px-6 py-2.5 display3 inline-flex items-center gap-2 hover:bg-black hover:text-white transition-colors cursor-pointer"
             >
               <Plus size={18} strokeWidth={1.5} />
-              <span>첫 번째 룩북 만들기</span>
+              <span className="caption3">첫 룩북 만들기</span>
             </button>
           </div>
         ) : (

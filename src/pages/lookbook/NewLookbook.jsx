@@ -1,28 +1,33 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Edit2, Plus, X, ChevronRight } from "lucide-react";
+import { Edit2, Plus, X, ChevronRight, Trash2 } from "lucide-react";
 import Stars from "../../img/stars.png";
 import hanger from "../../img/hanger.svg";
 import pose from "../../img/pose.png";
 
-// 3번째 시안 기준 6개 슬롯의 정밀 좌표 (1 -> 2 -> 3 -> 4 -> 5 -> 6 U자형 순환)
 const SLOT_COORDINATES = [
-  { id: 0, pos: "top-[10%] left-[8%]" }, // 1번: 좌상단
-  { id: 1, pos: "top-[40%] left-[-4%]" }, // 2번: 좌중단
-  { id: 2, pos: "top-[70%] left-[5%]" }, // 3번: 좌하단
-  { id: 3, pos: "top-[70%] right-[5%]" }, // 4번: 우하단
-  { id: 4, pos: "top-[40%] right-[-4%]" }, // 5번: 우중단
-  { id: 5, pos: "top-[10%] right-[8%]" }, // 6번: 우상단
+  { id: 0, pos: "top-[10%] left-[8%]" },
+  { id: 1, pos: "top-[40%] left-[-4%]" },
+  { id: 2, pos: "top-[70%] left-[5%]" },
+  { id: 3, pos: "top-[70%] right-[5%]" },
+  { id: 4, pos: "top-[40%] right-[-4%]" },
+  { id: 5, pos: "top-[10%] right-[8%]" },
 ];
 
 const CATEGORIES = ["All", "Top", "Bottom", "Outer", "Shoes", "Acc"];
+
+// 첫 번째 디테일 이미지(detailImages[0]) 또는 imageUrl 추출
+const getMainDetailImage = (targetItem) => {
+  if (!targetItem) return "";
+  return targetItem.detailImages?.[0] || targetItem.imageUrl || "";
+};
 
 export default function NewLookbook() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = Boolean(id);
 
-  // 컴포넌트 내부 탭 드래그 스크롤
+  // 탭 가로 드래그 스크롤
   const tabScrollRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -46,23 +51,21 @@ export default function NewLookbook() {
     tabScrollRef.current.scrollLeft = scrollLeft - walk;
   };
 
-  // 카테고리 필터 & 룩 정보 상태
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [lookTitle, setLookTitle] = useState("Unnamed");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [selectedItems, setSelectedItems] = useState([]); // 최대 6개 아이템 배열
-
-  // 🔥 테스트 기본 데이터 완전 제거 -> 로컬스토리지 전용 상태로 초기화
+  const [selectedItems, setSelectedItems] = useState([]);
   const [archiveItems, setArchiveItems] = useState([]);
 
-  // 로컬 스토리지 데이터 불러오기 (보관함 아이템 + 룩북 수정 모드)
+  // 로컬 스토리지 불러오기
   useEffect(() => {
-    // 1. 저장된 사용자 아이템 목록 불러오기
     const savedArchive = localStorage.getItem("fitlog_items");
+    let parsedArchiveList = [];
     if (savedArchive) {
       try {
         const parsed = JSON.parse(savedArchive);
         if (Array.isArray(parsed)) {
+          parsedArchiveList = parsed;
           setArchiveItems(parsed);
         }
       } catch (e) {
@@ -72,7 +75,6 @@ export default function NewLookbook() {
       setArchiveItems([]);
     }
 
-    // 2. 수정 모드일 때 해당 룩북 정보 불러오기
     if (isEditMode) {
       const savedLookbooks = localStorage.getItem("fitlog_lookbooks");
       if (savedLookbooks) {
@@ -81,7 +83,17 @@ export default function NewLookbook() {
           const target = parsed.find((lb) => String(lb.id) === String(id));
           if (target) {
             setLookTitle(target.title || "LOOK");
-            setSelectedItems(target.items || []);
+
+            const refreshedItems = (target.items || []).map((it) => {
+              const matched = parsedArchiveList.find(
+                (arc) => String(arc.id) === String(it.id),
+              );
+              return {
+                ...(matched || it),
+                imageUrl: getMainDetailImage(matched) || getMainDetailImage(it),
+              };
+            });
+            setSelectedItems(refreshedItems);
           }
         } catch (e) {
           console.error("룩북 로드 실패:", e);
@@ -90,20 +102,21 @@ export default function NewLookbook() {
     }
   }, [id, isEditMode]);
 
-  // 필터링된 아이템 리스트
   const filteredItems = useMemo(() => {
     if (selectedCategory === "All") return archiveItems;
     return archiveItems.filter((it) => it.category === selectedCategory);
   }, [archiveItems, selectedCategory]);
 
-  // 아이템 정보 중 제일 많이 사용된 스타일 태그 2개 자동 집계
   const topStyleTags = useMemo(() => {
     if (selectedItems.length === 0) return ["#StyleTag1", "#StyleTag2"];
 
     const countMap = {};
     selectedItems.forEach((it) => {
-      // styles 또는 style 단수형 키 모두 대응
-      const styles = it.styles || (it.style ? [it.style] : []);
+      const styles = Array.isArray(it.styles)
+        ? it.styles
+        : it.style
+          ? [it.style]
+          : [];
       styles.forEach((style) => {
         countMap[style] = (countMap[style] || 0) + 1;
       });
@@ -118,21 +131,22 @@ export default function NewLookbook() {
     return [first, second];
   }, [selectedItems]);
 
-  // 아이템 캔버스 추가 (최대 6개)
   const handleAddItem = (item) => {
     if (selectedItems.length >= 6) {
       alert("아이템은 최대 6개까지 배치할 수 있습니다.");
       return;
     }
-    setSelectedItems((prev) => [...prev, item]);
+    const itemWithMainImage = {
+      ...item,
+      imageUrl: getMainDetailImage(item),
+    };
+    setSelectedItems((prev) => [...prev, itemWithMainImage]);
   };
 
-  // 캔버스에서 아이템 제거
   const handleRemoveItem = (indexToRemove) => {
     setSelectedItems((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // 드래그 앤 드롭 핸들러
   const handleDragStart = (e, item) => {
     e.dataTransfer.setData("application/json", JSON.stringify(item));
   };
@@ -153,40 +167,71 @@ export default function NewLookbook() {
     }
   };
 
-  // 룩북 저장
   const handleSaveLookbook = () => {
     if (selectedItems.length < 2) {
       alert("최소 2개 이상의 아이템을 추가해주세요.");
       return;
     }
 
-    const newEntry = {
-      id: isEditMode ? Number(id) : Date.now(),
-      lookNo: `LOOK ${isEditMode ? id : "01"}`,
-      title: lookTitle || "무제 룩",
-      tags: topStyleTags.filter((t) => !t.includes("StyleTag")),
-      items: selectedItems,
-    };
-
-    const existing = JSON.parse(
-      localStorage.getItem("fitlog_lookbooks") || "[]",
-    );
-    let updated;
-    if (isEditMode) {
-      updated = existing.map((lb) =>
-        String(lb.id) === String(id) ? newEntry : lb,
+    try {
+      const existing = JSON.parse(
+        localStorage.getItem("fitlog_lookbooks") || "[]",
       );
-    } else {
-      updated = [newEntry, ...existing];
-    }
+      const nextNo = isEditMode
+        ? id
+        : String(existing.length + 1).padStart(2, "0");
 
-    localStorage.setItem("fitlog_lookbooks", JSON.stringify(updated));
-    navigate("/lookbook");
+      const lightweightItems = selectedItems.map((it) => ({
+        id: it.id,
+        title: it.title || it.name || "Untitled",
+        category: it.category || "Top",
+      }));
+
+      const newEntry = {
+        id: isEditMode ? Number(id) : Date.now(),
+        lookNo: `LOOK ${nextNo}`,
+        title: (lookTitle && lookTitle.trim()) || "무제 룩",
+        tags: topStyleTags.filter((t) => !t.includes("StyleTag")),
+        items: lightweightItems,
+      };
+
+      let updated;
+      if (isEditMode) {
+        updated = existing.map((lb) =>
+          String(lb.id) === String(id) ? newEntry : lb,
+        );
+      } else {
+        updated = [newEntry, ...existing];
+      }
+
+      localStorage.setItem("fitlog_lookbooks", JSON.stringify(updated));
+      navigate("/lookbook");
+    } catch (err) {
+      console.error("룩북 저장 실패:", err);
+      alert("저장 실패: " + err.message);
+    }
+  };
+
+  // 🔥 룩북 삭제 핸들러
+  const handleDeleteLookbook = () => {
+    if (!window.confirm("룩북을 삭제하시겠습니까?")) return;
+
+    try {
+      const existing = JSON.parse(
+        localStorage.getItem("fitlog_lookbooks") || "[]",
+      );
+      const updated = existing.filter((lb) => String(lb.id) !== String(id));
+      localStorage.setItem("fitlog_lookbooks", JSON.stringify(updated));
+      navigate("/lookbook");
+    } catch (err) {
+      console.error("룩북 삭제 실패:", err);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
   };
 
   return (
     <div className="w-full lg:px-[100px] xl:px-[180px] px-[50px] min-h-screen bg-base-pink text-black flex flex-col pt-[80px]">
-      {/* 1. 상단 타이틀 & 빵부스러기 네비게이션 */}
+      {/* 1. 상단 타이틀 */}
       <section className="relative w-full pt-10 pb-6 flex flex-col gap-6">
         <div className="flex flex-col items-start gap-1">
           <h1 className="z-10 display1 text-accent-pink font-normal leading-none italic select-none">
@@ -204,8 +249,7 @@ export default function NewLookbook() {
           />
         </div>
 
-        {/* Breadcrumb */}
-        <div className="flex justify-end items-center gap-3 text-dark-gray pr-1">
+        <div className="flex justify-end items-center gap-3 text-dark-gray pr-1 select-none">
           <span
             onClick={() => navigate("/lookbook")}
             className="hover:text-black cursor-pointer body4"
@@ -219,11 +263,9 @@ export default function NewLookbook() {
         </div>
       </section>
 
-      {/* 2. 메인 워크스페이스 영역 */}
+      {/* 2. 메인 워크스페이스 */}
       <main className="flex-1 w-full pb-24 flex flex-col md:flex-row gap-6 lg:gap-8 items-start justify-center">
-        {/* ========================================================
-            [좌측 영역]: My Item 아카이브 보관함
-           ======================================================== */}
+        {/* [좌측]: My Item 보관함 */}
         <div
           className="
             w-full md:w-[200px] lg:w-[250px] xl:w-[320px] 
@@ -232,12 +274,10 @@ export default function NewLookbook() {
             flex flex-col shrink-0 shadow-2xs
           "
         >
-          {/* 보관함 타이틀 */}
           <h2 className="display2 text-black pb-3 select-none shrink-0">
             My Item
           </h2>
 
-          {/* 카테고리 필터 탭 */}
           <div
             ref={tabScrollRef}
             onMouseDown={handleMouseDown}
@@ -266,11 +306,10 @@ export default function NewLookbook() {
             ))}
           </div>
 
-          {/* 아이템 목록 영역 */}
           <div className="flex-1 min-h-0 pt-5 md:overflow-y-auto no-scrollbar">
             {filteredItems.length === 0 ? (
               <div className="w-full h-48 flex flex-col items-center justify-center gap-3 text-center px-2">
-                <span className="body4 text-dark-gray text-xs">
+                <span className="body4 text-dark-gray">
                   {archiveItems.length === 0
                     ? "등록된 옷이 없습니다."
                     : "해당 카테고리에 아이템이 없습니다."}
@@ -279,7 +318,7 @@ export default function NewLookbook() {
                   <button
                     type="button"
                     onClick={() => navigate("/archive")}
-                    className="border border-black px-3 py-1.5 text-xs body4 hover:bg-black hover:text-white transition-colors cursor-pointer"
+                    className="border border-black px-3 py-1.5 body4 hover:bg-black hover:text-white transition-colors cursor-pointer"
                   >
                     옷 등록하러 가기
                   </button>
@@ -293,48 +332,48 @@ export default function NewLookbook() {
                   lg:grid-cols-2
                 "
               >
-                {filteredItems.map((item) => (
-                  <div
-                    key={item.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, item)}
-                    onClick={() => handleAddItem(item)}
-                    className="
-                      flex flex-col items-center gap-1.5 cursor-pointer group select-none shrink-0
-                      w-[96px] sm:w-[104px] md:w-full
-                    "
-                  >
-                    {/* 정사각 썸네일 박스 */}
-                    <div className="relative w-full aspect-square bg-[#F5F5F7] border border-[#EBEBEB] rounded-sm overflow-hidden group-hover:border-black/30 transition-all flex items-center justify-center shadow-2xs">
-                      {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
-                        />
-                      ) : (
-                        <img
-                          src={hanger}
-                          alt="No item"
-                          className="w-7 h-7 opacity-30 pointer-events-none"
-                        />
-                      )}
-                    </div>
+                {filteredItems.map((item) => {
+                  const displayImage = getMainDetailImage(item);
 
-                    {/* 아이템명 */}
-                    <span className="caption3 text-[14px] text-dark-gray truncate max-w-full text-center">
-                      {item.title}
-                    </span>
-                  </div>
-                ))}
+                  return (
+                    <div
+                      key={item.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item)}
+                      onClick={() => handleAddItem(item)}
+                      className="
+                        flex flex-col items-center gap-1.5 cursor-pointer group select-none shrink-0
+                        w-[96px] sm:w-[104px] md:w-full
+                      "
+                    >
+                      <div className="relative w-full aspect-square bg-[#F5F5F7] border border-[#EBEBEB] rounded-sm overflow-hidden group-hover:border-black/30 transition-all flex items-center justify-center shadow-2xs">
+                        {displayImage ? (
+                          <img
+                            src={displayImage}
+                            alt={item.title || item.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+                          />
+                        ) : (
+                          <img
+                            src={hanger}
+                            alt="No item"
+                            className="w-7 h-7 opacity-30 pointer-events-none"
+                          />
+                        )}
+                      </div>
+
+                      <span className="caption3 text-dark-gray truncate max-w-full text-center">
+                        {item.title || item.name}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
 
-        {/* ========================================================
-            [우측 영역]: 룩북 조립 캔버스 (메인 슬롯)
-           ======================================================== */}
+        {/* [우측]: 룩북 조립 캔버스 */}
         <div
           onDragOver={handleDragOver}
           onDrop={handleDrop}
@@ -345,7 +384,6 @@ export default function NewLookbook() {
             min-h-[800px] overflow-hidden shrink-0
           "
         >
-          {/* 상단: 룩 이름 편집 + 별 장식 */}
           <div className="w-full flex items-center justify-between relative z-20">
             <div className="flex items-center gap-[10px]">
               {isEditingTitle ? (
@@ -358,7 +396,7 @@ export default function NewLookbook() {
                   onKeyDown={(e) =>
                     e.key === "Enter" && setIsEditingTitle(false)
                   }
-                  className="border-b border-black outline-none bg-transparent"
+                  className="border-b border-black outline-none bg-transparent body2"
                 />
               ) : (
                 <span
@@ -377,7 +415,6 @@ export default function NewLookbook() {
               </button>
             </div>
 
-            {/* 우측 상단 핑크 별 에셋 */}
             <img
               src={Stars}
               alt=""
@@ -385,30 +422,41 @@ export default function NewLookbook() {
             />
           </div>
 
-          {/* 룩 조립 스테이지 */}
+          {/* 메인 스테이지 */}
           <div className="relative flex-1 w-full max-w-[380px] sm:max-w-[420px] mx-auto my-4 flex items-center justify-center select-none">
             <div className="w-[300px]">
               <img src={pose} alt="" />
             </div>
 
-            {/* U자형 6개 슬롯 렌더링 */}
+            {/* U자형 6개 슬롯 */}
             {SLOT_COORDINATES.map((slot, index) => {
               const assignedItem = selectedItems[index];
               const isNextSlot =
                 index === selectedItems.length && selectedItems.length < 6;
 
               if (assignedItem) {
+                const slotImage = getMainDetailImage(assignedItem);
+
                 return (
                   <div
                     key={`slot-${slot.id}`}
                     className={`absolute ${slot.pos} z-10 flex flex-col items-center group`}
                   >
-                    <div className="relative w-[72px] h-[72px] sm:w-[100px] sm:h-[100px] rounded-full bg-white border border-gray/40 overflow-hidden">
-                      <img
-                        src={assignedItem.imageUrl}
-                        alt={assignedItem.name}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="relative w-[72px] h-[72px] sm:w-[100px] sm:h-[100px] rounded-full bg-white border border-gray/40 overflow-hidden flex items-center justify-center shadow-xs">
+                      {slotImage ? (
+                        <img
+                          src={slotImage}
+                          alt={assignedItem.title || assignedItem.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <img
+                          src={hanger}
+                          alt="No item"
+                          className="w-6 h-6 sm:w-8 sm:h-8 opacity-40 pointer-events-none"
+                        />
+                      )}
+
                       <button
                         type="button"
                         onClick={(e) => {
@@ -420,6 +468,7 @@ export default function NewLookbook() {
                         <X size={18} strokeWidth={2} />
                       </button>
                     </div>
+
                     <span className="caption3 text-dark-gray mt-1">
                       {assignedItem.category}
                     </span>
@@ -450,7 +499,7 @@ export default function NewLookbook() {
             <div className="absolute bottom-[30px] left-1/2 -translate-x-1/2 z-10 flex flex-col gap-1.5 items-center">
               {topStyleTags.map((tag, idx) => (
                 <span
-                  key={idx}
+                  key={`top-tag-${idx}`}
                   className="px-4 py-1 rounded-full border border-[#D1D1D6] bg-white body4 text-dark-gray shadow-2xs select-none"
                 >
                   {tag}
@@ -459,8 +508,23 @@ export default function NewLookbook() {
             </div>
           </div>
 
-          {/* 하단 Save / Create 버튼 */}
-          <div className="w-full flex justify-end pt-2 z-20">
+          {/* 🔥 하단 버튼 영역: Edit 모드일 때는 Delete 버튼 노출 */}
+          <div
+            className={`w-full flex items-center pt-2 z-20 ${
+              isEditMode ? "justify-between" : "justify-end"
+            }`}
+          >
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={handleDeleteLookbook}
+                className="text-red-500 px-3.5 py-2 flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Trash2 size={16} strokeWidth={1.8} />
+                <span className="body4 font-medium">Delete</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleSaveLookbook}
