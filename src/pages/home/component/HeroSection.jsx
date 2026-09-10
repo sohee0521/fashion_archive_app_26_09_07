@@ -1,8 +1,60 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import main_slogan from "../../../img/main_slogan.png";
-import { Plus, Check, X } from "lucide-react";
+import {
+  Plus,
+  Check,
+  X,
+  ArrowRight,
+  CheckCircle2,
+  Loader2,
+  ExternalLink,
+} from "lucide-react";
+import { fetchOgData } from "../../../utils/fetchOgData";
 
 const DEFAULT_STYLES = ["Casual", "Feminine", "Hip", "Y2k"];
+
+// 스크롤 트리거 쇼쇼쇽 래퍼 컴포넌트
+function ScrollFadeIn({ children, delay = 0, className = "" }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const domRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+          } else {
+            setIsVisible(false);
+          }
+        });
+      },
+      {
+        threshold: 0.15,
+        rootMargin: "0px 0px -40px 0px",
+      },
+    );
+
+    const currentRef = domRef.current;
+    if (currentRef) observer.observe(currentRef);
+    return () => currentRef && observer.unobserve(currentRef);
+  }, []);
+
+  return (
+    <div
+      ref={domRef}
+      style={{ transitionDelay: isVisible ? `${delay}ms` : "0ms" }}
+      className={`transition-all duration-700 ease-out transform ${
+        isVisible
+          ? "opacity-100 translate-y-0 scale-100"
+          : "opacity-0 translate-y-10 scale-[0.99]"
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function HeroSection({
   urlInput,
@@ -16,6 +68,8 @@ export default function HeroSection({
   handleImageUpload,
   handleSaveItem,
 }) {
+  const navigate = useNavigate();
+
   const [folders, setFolders] = useState(["None"]);
   const [isAddingFolder, setIsAddingFolder] = useState(false);
   const [newFolderInput, setNewFolderInput] = useState("");
@@ -23,6 +77,15 @@ export default function HeroSection({
   const [styles, setStyles] = useState(DEFAULT_STYLES);
   const [isAddingStyle, setIsAddingStyle] = useState(false);
   const [newStyleInput, setNewStyleInput] = useState("");
+
+  // 저장 완료 모달 State
+  const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
+
+  // OG 이미지 및 메타데이터 로딩 상태
+  const [isFetchingOg, setIsFetchingOg] = useState(false);
+
+  // 링크 존재 여부 판단 변수 (링크가 없으면 상품명 필수!)
+  const hasUrl = Boolean(formData.url && formData.url.trim());
 
   // 폼 열림 또는 마운트 시 로컬스토리지와 동기화
   useEffect(() => {
@@ -168,362 +231,568 @@ export default function HeroSection({
     }
   };
 
+  // 🔥 URL 입력 후 ADD 클릭 시: og:image & og:title 자동 스크랩 및 콘솔 확인
+  const onAddUrlSubmit = async (e) => {
+    e.preventDefault();
+    if (!urlInput.trim()) return;
+
+    const inputUrl = urlInput.trim();
+    setIsFetchingOg(true);
+    setIsFormOpen(true);
+
+    if (typeof handleAddUrl === "function") {
+      handleAddUrl(e);
+    }
+
+    try {
+      const ogData = await fetchOgData(inputUrl);
+
+      // 🔥 최종 확보된 이미지 링크 콘솔 확인
+      console.log("📦 [HeroSection 폼에 전달될 이미지 링크]:", ogData.imageUrl);
+
+      setFormData((prev) => {
+        const nextTitle = prev.title?.trim() ? prev.title : ogData.title || "";
+        const scrapedImg = ogData.imageUrl || "";
+
+        // 디테일 이미지 배열 첫 번째 자리에 대입
+        const nextDetailImages = scrapedImg
+          ? [scrapedImg]
+          : prev.detailImages || [];
+
+        return {
+          ...prev,
+          url: inputUrl,
+          title: nextTitle,
+          previewImage: scrapedImg,
+          imageUrl: scrapedImg,
+          detailImages: nextDetailImages,
+        };
+      });
+    } catch (err) {
+      console.warn("OG 메타데이터 가져오기 실패:", err);
+    } finally {
+      setIsFetchingOg(false);
+    }
+  };
+
+  // 🔥 저장 버튼 로직 (디테일 이미지 데이터 누락 없이 완벽 저장)
+  const onSaveClick = () => {
+    const trimmedTitle = formData.title?.trim();
+
+    if (!hasUrl && !trimmedTitle) {
+      alert("링크가 없는 경우 상품명은 필수 항목입니다.");
+      return;
+    }
+
+    const finalTitle = trimmedTitle || "Untitled";
+    const finalIsOwned = formData.isOwned || "Want";
+
+    const resolvedStyles =
+      Array.isArray(formData.styles) && formData.styles.length > 0
+        ? formData.styles
+        : formData.style && formData.style !== "None"
+          ? [formData.style]
+          : [];
+
+    // 🔥 메인 이미지 및 디테일 이미지 목록 추출
+    const finalImage = formData.previewImage || formData.imageUrl || "";
+    const finalDetailImages =
+      Array.isArray(formData.detailImages) && formData.detailImages.length > 0
+        ? formData.detailImages
+        : finalImage
+          ? [finalImage]
+          : [];
+
+    const newId = Date.now();
+    const newItem = {
+      id: newId,
+      title: finalTitle,
+      isOwned: finalIsOwned,
+      memo: formData.memo || "",
+      folder: formData.folder || "None",
+      category: formData.category || "Top",
+      styles: resolvedStyles,
+      style: resolvedStyles[0] || "None",
+      imageUrl: finalImage || finalDetailImages[0] || "",
+      detailImages: finalDetailImages,
+      url: formData.url || "",
+    };
+
+    try {
+      const currentItems = JSON.parse(
+        localStorage.getItem("fitlog_items") || "[]",
+      );
+      const updatedItems = [newItem, ...currentItems];
+      localStorage.setItem("fitlog_items", JSON.stringify(updatedItems));
+    } catch (err) {
+      console.error(err);
+    }
+
+    if (typeof handleSaveItem === "function") {
+      setFormData((prev) => ({
+        ...prev,
+        title: finalTitle,
+        isOwned: finalIsOwned,
+      }));
+    }
+
+    setIsFormOpen(false);
+    setIsSavedModalOpen(true);
+  };
+
   return (
-    <section className="w-full pt-[120px] bg-gradient-to-b from-base-pink via-base-pink/50 to-white pb-20 px-6 flex flex-col items-center">
-      <p className="caption3 text-accent-pink">Add New Item</p>
-
-      <div className="mb-10 w-full sm:w-[70%] max-w-[1000px] flex justify-center">
-        <img
-          src={main_slogan}
-          alt="What's in My Closet?"
-          className="w-full object-contain"
-        />
-      </div>
-
-      <form
-        onSubmit={handleAddUrl}
-        className="w-full max-w-3xl flex items-center border-b border-black pb-2 mb-3"
+    <section className="w-full pt-[120px] bg-gradient-to-b from-base-pink via-base-pink/50 to-white pb-20 px-6 flex flex-col items-center overflow-hidden">
+      {/* 1. 상단 라벨 & 메인 슬로건 이미지 쇼쇼쇽 */}
+      <ScrollFadeIn
+        delay={100}
+        className="w-full flex flex-col items-center text-center"
       >
-        <input
-          type="text"
-          placeholder="상품 링크를 붙여넣어보세요!"
-          value={urlInput}
-          onChange={(e) => setUrlInput(e.target.value)}
-          className="w-full bg-transparent outline-none body4 text-black placeholder:text-light-text px-2"
-        />
-        <button
-          type="submit"
-          className="bg-black text-white px-[15px] py-[10px] body4 flex gap-[5px] hover:bg-black/80 transition-colors shrink-0 cursor-pointer"
-        >
-          <Plus size={20} strokeWidth={1.5} />
-          ADD
-        </button>
-      </form>
+        <p className="caption3 text-accent-pink">Add New Item</p>
 
-      {!isFormOpen && (
-        <button
-          type="button"
-          onClick={handleOpenWithoutLink}
-          className="caption3 text-light-text underline hover:text-black transition-colors cursor-pointer"
-        >
-          or add without a link
-        </button>
-      )}
+        <div className="relative mb-10 w-full sm:w-[80%] max-w-[1000px] flex justify-center">
+          <img
+            src={main_slogan}
+            alt="What's in My Closet?"
+            className="w-full object-contain pointer-events-none select-none"
+          />
+        </div>
+      </ScrollFadeIn>
 
+      {/* 2. URL 입력 검색바 쇼쇼쇽 */}
+      <ScrollFadeIn
+        delay={200}
+        className="w-full max-w-3xl flex flex-col items-center"
+      >
+        <form
+          onSubmit={onAddUrlSubmit}
+          className="w-full flex items-center border-b border-black pb-2 mb-3"
+        >
+          <input
+            type="text"
+            placeholder="소장 중이거나 갖고싶은 상품 링크를 붙여넣어 보세요!"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            disabled={isFetchingOg}
+            className="w-full bg-transparent outline-none body4 text-black placeholder:text-light-text px-2 disabled:opacity-50"
+          />
+          <button
+            type="submit"
+            disabled={isFetchingOg}
+            className="bg-black text-white px-[15px] py-[10px] body4 flex items-center gap-[5px] hover:bg-black/80 transition-colors shrink-0 cursor-pointer disabled:opacity-60"
+          >
+            {isFetchingOg ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                <span>불러오는 중...</span>
+              </>
+            ) : (
+              <>
+                <Plus size={20} strokeWidth={1.5} />
+                <span>ADD</span>
+              </>
+            )}
+          </button>
+        </form>
+
+        {!isFormOpen && (
+          <button
+            type="button"
+            onClick={handleOpenWithoutLink}
+            className="caption3 text-light-text underline hover:text-black transition-colors cursor-pointer"
+          >
+            or add without a link
+          </button>
+        )}
+      </ScrollFadeIn>
+
+      {/* 3. 등록 폼 영역 쇼쇼쇽 */}
       {isFormOpen && (
-        <div className="w-full max-w-3xl bg-white rounded-lg shadow-sm border border-gray/40 overflow-hidden mt-6 p-6">
-          {/* 🔥 링크(formData.url)가 있을 때만 프리뷰 큰 박스 렌더링, 없으면 통째로 미표시 */}
-          {Boolean(formData.url && formData.url.trim()) && (
-            <div className="border border-gray/50 rounded overflow-hidden mb-8">
-              <div className="bg-white px-4 py-3 border-b border-gray/40 flex justify-between items-center select-none">
-                <span className="caption3 tracking-widest text-dark-gray">
-                  PRODUCT PREVIEW
-                </span>
-                <a
-                  href={formData.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="caption3 underline underline-offset-4 text-black hover:text-accent-pink flex items-center gap-1"
-                >
-                  OPEN ↗
-                </a>
+        <ScrollFadeIn delay={150} className="w-full max-w-3xl">
+          <div className="w-full bg-white rounded-lg shadow-sm border border-gray/40 overflow-hidden mt-6 p-6">
+            {/* 링크 프리뷰 카드 */}
+            {hasUrl && (
+              <div className="border border-gray/30 rounded-lg overflow-hidden mb-8 bg-white shadow-2xs">
+                <div className="bg-[#FAFAFA] px-4 py-3 border-b border-gray/20 flex justify-between items-center select-none">
+                  <span className="caption3 tracking-widest text-dark-gray font-medium">
+                    LINK PREVIEW
+                  </span>
+                  <a
+                    href={formData.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="caption3 underline underline-offset-4 text-black hover:text-accent-pink flex items-center gap-1"
+                  >
+                    <span>OPEN</span>
+                    <ExternalLink size={13} strokeWidth={1.5} />
+                  </a>
+                </div>
+
+                <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-5 bg-white">
+                  {/* 스크랩된 대표 이미지 썸네일 */}
+                  <div className="w-full sm:w-32 aspect-square rounded-md overflow-hidden bg-gray-100 shrink-0 border border-gray/20 flex items-center justify-center">
+                    {formData.previewImage ? (
+                      <img
+                        src={formData.previewImage}
+                        alt="Scraped OG"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="caption3 text-dark-gray text-center px-1">
+                        {isFetchingOg ? "이미지 로딩중..." : "이미지 없음"}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 텍스트 정보 */}
+                  <div className="flex flex-col justify-center overflow-hidden w-full gap-1">
+                    <span className="caption3 text-accent-pink uppercase tracking-widest font-medium">
+                      AUTO COLLECTED
+                    </span>
+                    <h4 className="body2 font-semibold text-black truncate">
+                      {formData.title ||
+                        (isFetchingOg
+                          ? "상품 정보를 불러오는 중입니다..."
+                          : "제목이 지정되지 않았습니다")}
+                    </h4>
+                    <p className="caption3 text-dark-gray truncate">
+                      {formData.url}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-5 px-2">
+              {/* IsOwned */}
+              <div className="flex items-center">
+                <span className="w-32 body4 text-black">IsOwned</span>
+                <div className="flex gap-2">
+                  {["Want", "Have"].map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() =>
+                        setFormData({ ...formData, isOwned: status })
+                      }
+                      className={`px-4 py-1 rounded-full caption3 transition-colors cursor-pointer ${
+                        formData.isOwned === status
+                          ? "bg-accent-pink text-white"
+                          : "border border-gray text-dark-gray bg-white hover:border-black"
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="w-full h-[700px] bg-white overflow-hidden">
-                <iframe
-                  src={formData.url}
-                  title="Product Preview"
-                  className="w-full h-full border-0"
+              {/* Product Name */}
+              <div className="flex items-center">
+                <span className="w-32 body4 text-black flex items-center gap-1">
+                  Product Name
+                  {!hasUrl && (
+                    <span className="text-accent-pink font-bold">*</span>
+                  )}
+                </span>
+                <input
+                  type="text"
+                  value={formData.title}
+                  placeholder={
+                    hasUrl
+                      ? "상품명을 입력해주세요 (미입력 시 Untitled)"
+                      : "상품명을 입력해주세요 (필수)"
+                  }
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
+                  className="flex-1 bg-transparent border-b border-dotted border-gray py-1 body4 outline-none text-black placeholder:text-light-text focus:border-black"
                 />
               </div>
-            </div>
-          )}
 
-          <div className="flex flex-col gap-5 px-2">
-            {/* IsOwned */}
-            <div className="flex items-center">
-              <span className="w-32 caption3 text-black flex items-center gap-1">
-                IsOwned <span className="text-accent-pink font-bold">*</span>
-              </span>
-              <div className="flex gap-2">
-                {["Want", "Have"].map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() =>
-                      setFormData({ ...formData, isOwned: status })
-                    }
-                    className={`px-4 py-1 rounded-full caption3 transition-colors cursor-pointer ${
-                      formData.isOwned === status
-                        ? "bg-accent-pink text-white"
-                        : "border border-gray text-dark-gray bg-white hover:border-black"
-                    }`}
-                  >
-                    {status}
-                  </button>
-                ))}
+              {/* Memo */}
+              <div className="flex items-center">
+                <span className="w-32 body4 text-black">Memo</span>
+                <input
+                  type="text"
+                  value={formData.memo}
+                  placeholder="저장 이유, 코디 팁, 사이즈 등을 메모해보세요"
+                  onChange={(e) =>
+                    setFormData({ ...formData, memo: e.target.value })
+                  }
+                  className="flex-1 bg-transparent border-b border-dotted border-gray py-1 body4 outline-none text-black placeholder:text-light-text focus:border-black"
+                />
               </div>
-            </div>
 
-            {/* Product Name */}
-            <div className="flex items-center">
-              <span className="w-32 caption3 text-black flex items-center gap-1">
-                Product Name{" "}
-                <span className="text-accent-pink font-bold">*</span>
-              </span>
-              <input
-                type="text"
-                value={formData.title}
-                placeholder="상품 제목을 입력해주세요"
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-                className="flex-1 bg-transparent border-b border-dotted border-gray py-1 body4 outline-none text-black placeholder:text-light-text focus:border-black"
-              />
-            </div>
+              {/* Folder */}
+              <div className="flex items-start">
+                <span className="w-32 body4 text-black leading-[28px]">
+                  Folder
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {folders.map((f) => {
+                    const isCustom = f !== "None" && f !== "All";
+                    const isSelected = formData.folder === f;
 
-            {/* Memo */}
-            <div className="flex items-center">
-              <span className="w-32 caption3 text-black">Memo</span>
-              <input
-                type="text"
-                value={formData.memo}
-                placeholder="저장 이유, 코디 팁, 사이즈 등을 메모해보세요"
-                onChange={(e) =>
-                  setFormData({ ...formData, memo: e.target.value })
-                }
-                className="flex-1 bg-transparent border-b border-dotted border-gray py-1 body4 outline-none text-black placeholder:text-light-text focus:border-black"
-              />
-            </div>
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, folder: f })}
+                        className={`group relative px-3 py-1 rounded-full caption3 cursor-pointer transition-colors flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-accent-pink text-white font-medium"
+                            : "border border-gray text-dark-gray bg-white hover:border-black"
+                        }`}
+                      >
+                        <span>{f}</span>
+                        {isCustom && (
+                          <span
+                            onClick={(e) => handleDeleteFolder(e, f)}
+                            className={`p-0.5 rounded-full hover:bg-black/20 transition-all ${
+                              isSelected
+                                ? "text-white"
+                                : "text-dark-gray hover:text-black"
+                            }`}
+                            title="폴더 삭제"
+                          >
+                            <X size={11} strokeWidth={2.5} />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
 
-            {/* Folder */}
-            <div className="flex items-start">
-              <span className="w-32 caption3 text-black leading-[28px]">
-                Folder
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                {folders.map((f) => {
-                  const isCustom = f !== "None" && f !== "All";
-                  const isSelected = formData.folder === f;
-
-                  return (
-                    <button
-                      key={f}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, folder: f })}
-                      className={`group relative px-3 py-1 rounded-full caption3 cursor-pointer transition-colors flex items-center gap-1.5 ${
-                        isSelected
-                          ? "bg-accent-pink text-white font-medium"
-                          : "border border-gray text-dark-gray bg-white hover:border-black"
-                      }`}
-                    >
-                      <span>{f}</span>
-                      {isCustom && (
-                        <span
-                          onClick={(e) => handleDeleteFolder(e, f)}
-                          className={`p-0.5 rounded-full hover:bg-black/20 transition-all ${
-                            isSelected
-                              ? "text-white"
-                              : "text-dark-gray hover:text-black"
-                          }`}
-                          title="폴더 삭제"
-                        >
-                          <X size={11} strokeWidth={2.5} />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {isAddingFolder ? (
-                  <div className="flex items-center gap-1 border border-black rounded-full px-2.5 py-0.5 bg-white">
-                    <input
-                      type="text"
-                      value={newFolderInput}
-                      autoFocus
-                      placeholder="폴더명"
-                      onChange={(e) => setNewFolderInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddNewFolder();
-                        }
-                        if (e.key === "Escape") {
+                  {isAddingFolder ? (
+                    <div className="flex items-center gap-1 border border-black rounded-full px-2.5 py-0.5 bg-white">
+                      <input
+                        type="text"
+                        value={newFolderInput}
+                        autoFocus
+                        placeholder="폴더명"
+                        onChange={(e) => setNewFolderInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddNewFolder();
+                          }
+                          if (e.key === "Escape") {
+                            setIsAddingFolder(false);
+                            setNewFolderInput("");
+                          }
+                        }}
+                        className="caption3 outline-none bg-transparent w-20 text-black placeholder:text-gray"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNewFolder}
+                        className="text-accent-pink hover:text-black cursor-pointer"
+                      >
+                        <Check size={14} strokeWidth={2} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
                           setIsAddingFolder(false);
                           setNewFolderInput("");
-                        }
-                      }}
-                      className="caption3 outline-none bg-transparent w-20 text-black placeholder:text-gray"
-                    />
+                        }}
+                        className="text-dark-gray hover:text-black cursor-pointer"
+                      >
+                        <X size={12} strokeWidth={2} />
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      onClick={handleAddNewFolder}
-                      className="text-accent-pink hover:text-black cursor-pointer"
+                      onClick={() => setIsAddingFolder(true)}
+                      className="w-7 h-7 rounded-full border border-dashed border-gray flex items-center justify-center text-dark-gray hover:text-black hover:border-black transition-colors cursor-pointer"
                     >
-                      <Check size={14} strokeWidth={2} />
+                      <Plus size={14} strokeWidth={1.5} />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddingFolder(false);
-                        setNewFolderInput("");
-                      }}
-                      className="text-dark-gray hover:text-black cursor-pointer"
-                    >
-                      <X size={12} strokeWidth={2} />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingFolder(true)}
-                    className="w-7 h-7 rounded-full border border-dashed border-gray flex items-center justify-center text-dark-gray hover:text-black hover:border-black transition-colors cursor-pointer"
-                  >
-                    <Plus size={14} strokeWidth={1.5} />
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Category */}
-            <div className="flex items-center">
-              <span className="w-32 caption3 text-black">Category</span>
-              <div className="flex flex-wrap gap-2">
-                {["Top", "Bottom", "Outer", "Shoes", "Acc"].map((cat) => (
+              {/* Category */}
+              <div className="flex items-center">
+                <span className="w-32 body4 text-black">Category</span>
+                <div className="flex flex-wrap gap-2">
+                  {["Top", "Bottom", "Outer", "Shoes", "Acc"].map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() =>
+                        setFormData({ ...formData, category: cat })
+                      }
+                      className={`px-4 py-1 rounded-full caption3 transition-colors cursor-pointer ${
+                        formData.category === cat
+                          ? "bg-accent-pink text-white"
+                          : "border border-gray text-dark-gray bg-white hover:border-black"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Style */}
+              <div className="flex items-start">
+                <span className="w-32 body4 text-black leading-[28px]">
+                  Style
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
                   <button
-                    key={cat}
                     type="button"
-                    onClick={() => setFormData({ ...formData, category: cat })}
-                    className={`px-4 py-1 rounded-full caption3 transition-colors cursor-pointer ${
-                      formData.category === cat
+                    onClick={() => handleToggleStyle("None")}
+                    className={`px-3 py-1 rounded-full caption3 cursor-pointer transition-colors ${
+                      selectedStyles.length === 0
                         ? "bg-accent-pink text-white"
                         : "border border-gray text-dark-gray bg-white hover:border-black"
                     }`}
                   >
-                    {cat}
+                    None
                   </button>
-                ))}
-              </div>
-            </div>
 
-            {/* Style */}
-            <div className="flex items-start">
-              <span className="w-32 caption3 text-black leading-[28px]">
-                Style
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleToggleStyle("None")}
-                  className={`px-3 py-1 rounded-full caption3 cursor-pointer transition-colors ${
-                    selectedStyles.length === 0
-                      ? "bg-accent-pink text-white"
-                      : "border border-gray text-dark-gray bg-white hover:border-black"
-                  }`}
-                >
-                  None
-                </button>
+                  {styles.map((st) => {
+                    const isCustom = !DEFAULT_STYLES.includes(st);
+                    const isSelected = selectedStyles.includes(st);
 
-                {styles.map((st) => {
-                  const isCustom = !DEFAULT_STYLES.includes(st);
-                  const isSelected = selectedStyles.includes(st);
+                    return (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => handleToggleStyle(st)}
+                        className={`group relative px-3 py-1 rounded-full caption3 cursor-pointer transition-colors flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-accent-pink text-white font-medium shadow-2xs"
+                            : "border border-gray text-dark-gray bg-white hover:border-black"
+                        }`}
+                      >
+                        <span>#{st}</span>
 
-                  return (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => handleToggleStyle(st)}
-                      className={`group relative px-3 py-1 rounded-full caption3 cursor-pointer transition-colors flex items-center gap-1.5 ${
-                        isSelected
-                          ? "bg-accent-pink text-white font-medium shadow-2xs"
-                          : "border border-gray text-dark-gray bg-white hover:border-black"
-                      }`}
-                    >
-                      <span>#{st}</span>
+                        {isCustom && (
+                          <span
+                            onClick={(e) => handleDeleteStyle(e, st)}
+                            className={`p-0.5 rounded-full hover:bg-black/20 transition-all ${
+                              isSelected
+                                ? "text-white"
+                                : "text-dark-gray hover:text-black"
+                            }`}
+                            title="스타일 삭제"
+                          >
+                            <X size={11} strokeWidth={2.5} />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
 
-                      {isCustom && (
-                        <span
-                          onClick={(e) => handleDeleteStyle(e, st)}
-                          className={`p-0.5 rounded-full hover:bg-black/20 transition-all ${
-                            isSelected
-                              ? "text-white"
-                              : "text-dark-gray hover:text-black"
-                          }`}
-                          title="스타일 삭제"
-                        >
-                          <X size={11} strokeWidth={2.5} />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {isAddingStyle ? (
-                  <div className="flex items-center gap-1 border border-black rounded-full px-2.5 py-0.5 bg-white">
-                    <input
-                      type="text"
-                      value={newStyleInput}
-                      autoFocus
-                      placeholder="스타일명"
-                      onChange={(e) => setNewStyleInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddNewStyle();
-                        }
-                        if (e.key === "Escape") {
+                  {isAddingStyle ? (
+                    <div className="flex items-center gap-1 border border-black rounded-full px-2.5 py-0.5 bg-white">
+                      <input
+                        type="text"
+                        value={newStyleInput}
+                        autoFocus
+                        placeholder="스타일명"
+                        onChange={(e) => setNewStyleInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddNewStyle();
+                          }
+                          if (e.key === "Escape") {
+                            setIsAddingStyle(false);
+                            setNewStyleInput("");
+                          }
+                        }}
+                        className="caption3 outline-none bg-transparent w-20 text-black placeholder:text-gray"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNewStyle}
+                        className="text-accent-pink hover:text-black cursor-pointer"
+                      >
+                        <Check size={14} strokeWidth={2} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
                           setIsAddingStyle(false);
                           setNewStyleInput("");
-                        }
-                      }}
-                      className="caption3 outline-none bg-transparent w-20 text-black placeholder:text-gray"
-                    />
+                        }}
+                        className="text-dark-gray hover:text-black cursor-pointer"
+                      >
+                        <X size={12} strokeWidth={2} />
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      onClick={handleAddNewStyle}
-                      className="text-accent-pink hover:text-black cursor-pointer"
+                      onClick={() => setIsAddingStyle(true)}
+                      className="w-7 h-7 rounded-full border border-dashed border-gray flex items-center justify-center text-dark-gray hover:text-black hover:border-black transition-colors cursor-pointer"
                     >
-                      <Check size={14} strokeWidth={2} />
+                      <Plus size={14} strokeWidth={1.5} />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddingStyle(false);
-                        setNewStyleInput("");
-                      }}
-                      className="text-dark-gray hover:text-black cursor-pointer"
-                    >
-                      <X size={12} strokeWidth={2} />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingStyle(true)}
-                    className="w-7 h-7 rounded-full border border-dashed border-gray flex items-center justify-center text-dark-gray hover:text-black hover:border-black transition-colors cursor-pointer"
-                  >
-                    <Plus size={14} strokeWidth={1.5} />
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex justify-end items-center gap-3 pt-6 mt-4 border-t border-gray/30">
-            <button
-              type="button"
-              onClick={() => setIsFormOpen(false)}
-              className="body4 text-dark-gray hover:text-black px-4 py-[7px] cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveItem}
-              className="bg-black text-white px-4 py-[7px] rounded-xs body4 font-medium flex items-center gap-2 hover:bg-black/85 transition-colors tracking-wider cursor-pointer"
-            >
-              SAVE
-            </button>
+            <div className="flex justify-end items-center gap-3 pt-6 mt-4 border-t border-gray/30">
+              <button
+                type="button"
+                onClick={() => setIsFormOpen(false)}
+                className="body4 text-dark-gray hover:text-black px-4 py-[7px] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onSaveClick}
+                className="bg-black text-white px-4 py-[7px] rounded-xs body4 font-medium flex items-center gap-2 hover:bg-black/85 transition-colors tracking-wider cursor-pointer"
+              >
+                SAVE
+              </button>
+            </div>
+          </div>
+        </ScrollFadeIn>
+      )}
+
+      {/* 저장 완료 모달 */}
+      {isSavedModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-pink-100 flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-full bg-base-pink/50 text-accent-pink flex items-center justify-center mb-4">
+              <CheckCircle2 size={26} strokeWidth={2} />
+            </div>
+
+            <h3 className="body2 font-bold text-black mb-1.5">
+              아이템이 저장되었습니다!
+            </h3>
+            <p className="body4 text-dark-gray mb-6">
+              저장한 아이템으로 나만의 룩북을 만들어보세요.
+            </p>
+
+            <div className="flex gap-2.5 w-full">
+              <button
+                type="button"
+                onClick={() => setIsSavedModalOpen(false)}
+                className="flex-1 py-2.5 rounded-full border border-[#EBEBEB] text-dark-gray body4 hover:bg-stone-50 transition-colors cursor-pointer"
+              >
+                머무르기
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSavedModalOpen(false);
+                  navigate("/newLookbook");
+                }}
+                className="flex-1 py-2.5 rounded-full bg-black text-white body4 font-medium flex items-center justify-center gap-1.5 hover:bg-black/85 transition-colors cursor-pointer shadow-sm"
+              >
+                <span>룩북 만들기</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowUpRight, Plus, Check, X } from "lucide-react";
+import { ArrowUpRight, Plus, Check, X, Trash2 } from "lucide-react";
 import hanger from "../../../img/hanger.svg";
 
 const DEFAULT_STYLES = ["Casual", "Feminine", "Hip", "Y2k"];
@@ -12,6 +12,7 @@ export default function ItemInfoSection({
   availableFolders,
   setAvailableFolders,
   onSave,
+  onDelete, // 🔥 삭제 핸들러 prop 추가
   onAddImage,
   onRemoveImage,
 }) {
@@ -42,6 +43,8 @@ export default function ItemInfoSection({
     folder: "None",
   });
 
+  const hasUrl = Boolean(item?.url && item.url.trim());
+
   useEffect(() => {
     if (item) {
       setForm({
@@ -69,7 +72,6 @@ export default function ItemInfoSection({
     }));
   };
 
-  // 새 Style 추가
   const handleAddNewStyle = () => {
     const trimmed = newStyleInput.trim();
     if (!trimmed) {
@@ -90,7 +92,6 @@ export default function ItemInfoSection({
     setIsAddingStyle(false);
   };
 
-  // 🔥 커스텀 Style 삭제
   const handleDeleteStyle = (e, targetStyle) => {
     e.stopPropagation();
     if (DEFAULT_STYLES.includes(targetStyle)) return;
@@ -107,7 +108,6 @@ export default function ItemInfoSection({
     }));
   };
 
-  // 새 Folder 추가
   const handleCreateFolder = () => {
     const trimmed = newFolderInput.trim();
     if (!trimmed) {
@@ -130,7 +130,6 @@ export default function ItemInfoSection({
     setIsAddingFolder(false);
   };
 
-  // 🔥 커스텀 Folder 삭제
   const handleDeleteFolder = (e, targetFolder) => {
     e.stopPropagation();
     if (targetFolder === "None" || targetFolder === "All") return;
@@ -153,12 +152,14 @@ export default function ItemInfoSection({
       <div className="w-full flex flex-col gap-5">
         <h2 className="display2 text-accent-pink italic select-none">Info</h2>
 
-        <div className="w-full flex flex-col lg:flex-row gap-10 items-stretch">
-          {/* 상품 프리뷰 윈도우 */}
-          <div className="w-full lg:w-[58%] border border-gray/40 rounded-sm bg-white overflow-hidden flex flex-col shadow-2xs">
-            <div className="px-4 py-2.5 border-b border-gray/30 bg-[#FAFAFA] flex justify-between items-center select-none">
-              <span className="caption3 text-dark-gray">Product Preview</span>
-              {item.url && (
+        <div
+          className={`w-full flex flex-col ${hasUrl ? "lg:flex-row" : ""} gap-10 items-stretch`}
+        >
+          {/* 상품 프리뷰 윈도우 (링크 있을 때만) */}
+          {hasUrl && (
+            <div className="w-full lg:w-[58%] border border-gray/40 rounded-sm bg-white overflow-hidden flex flex-col shadow-2xs">
+              <div className="px-4 py-2.5 border-b border-gray/30 bg-[#FAFAFA] flex justify-between items-center select-none">
+                <span className="caption3 text-dark-gray">Product Preview</span>
                 <a
                   href={item.url}
                   target="_blank"
@@ -168,50 +169,37 @@ export default function ItemInfoSection({
                   <span>OPEN</span>
                   <ArrowUpRight size={15} strokeWidth={1.5} />
                 </a>
-              )}
-            </div>
+              </div>
 
-            <div className="relative w-full h-[480px] sm:h-[560px] bg-white overflow-hidden group">
-              {item.url ? (
-                <>
-                  <iframe
-                    src={item.url}
-                    title="Product Preview"
-                    className="w-full h-full border-0 pointer-events-none"
-                  />
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="absolute inset-0 z-10 flex items-end justify-end p-4 bg-black/0 group-hover:bg-black/10 transition-colors"
-                  >
-                    <span className="opacity-0 group-hover:opacity-100 bg-black/75 text-white px-3 py-1.5 rounded-full caption3 flex items-center gap-1.5 shadow-md transition-opacity">
-                      <span>Visit Site</span>
-                      <ArrowUpRight size={14} strokeWidth={1.5} />
-                    </span>
-                  </a>
-                </>
-              ) : item.imageUrl ? (
-                <div className="w-full h-full flex items-center justify-center p-4 bg-background">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.title}
-                    className="max-w-full max-h-full object-contain"
-                  />
-                </div>
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-40 bg-background select-none">
-                  <img src={hanger} alt="No preview" className="w-12 h-12" />
-                  <span className="caption3 text-dark-gray">
-                    No Preview Available
+              <div className="relative w-full h-[480px] sm:h-[560px] bg-white overflow-hidden group">
+                <iframe
+                  src={item.url}
+                  title="Product Preview"
+                  className="w-full h-full border-0 pointer-events-none"
+                />
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="absolute inset-0 z-10 flex items-end justify-end p-4 bg-black/0 group-hover:bg-black/10 transition-colors"
+                >
+                  <span className="opacity-0 group-hover:opacity-100 bg-black/75 text-white px-3 py-1.5 rounded-full caption3 flex items-center gap-1.5 shadow-md transition-opacity">
+                    <span>Visit Site</span>
+                    <ArrowUpRight size={14} strokeWidth={1.5} />
                   </span>
-                </div>
-              )}
+                </a>
+              </div>
             </div>
-          </div>
-          {/* 우측 편집 영역 */}
+          )}
 
-          <div className="flex-1 flex flex-col justify-between py-[20px]">
+          {/* 우측 편집 영역 */}
+          <div
+            className={`flex flex-col justify-between py-[20px] ${
+              hasUrl
+                ? "flex-1"
+                : "w-full max-w-3xl bg-white border border-gray/30 rounded-sm p-6 sm:p-8 shadow-2xs"
+            }`}
+          >
             <div className="flex-1 flex flex-col justify-start gap-5 py-1">
               {/* Want / Have */}
               <div className="flex flex-col gap-1.5">
@@ -316,7 +304,7 @@ export default function ItemInfoSection({
                   )}
                 </div>
 
-                {/* Style (커스텀 삭제 x 포함) */}
+                {/* Style */}
                 <div className="flex items-start">
                   <span className="w-24 text-dark-gray body4 shrink-0 leading-[28px]">
                     Style
@@ -432,7 +420,7 @@ export default function ItemInfoSection({
                   )}
                 </div>
 
-                {/* Folder (커스텀 삭제 x 포함) */}
+                {/* Folder */}
                 <div className="flex items-start">
                   <span className="w-24 text-dark-gray body4 shrink-0 leading-[28px]">
                     Folder
@@ -530,8 +518,27 @@ export default function ItemInfoSection({
                 </div>
               </div>
             </div>
-            {/* 수정 */}
-            <div className="w-full flex justify-end items-center">
+
+            {/* 🔥 하단 버튼 영역: Edit 모드일 때만 좌측에 Delete 버튼 노출 */}
+            <div
+              className={`w-full flex items-center mt-6 pt-4 border-t border-gray/20 ${
+                isEditing ? "justify-between" : "justify-end"
+              }`}
+            >
+              {/* 1. 편집 모드일 때: [좌측] Delete 버튼 */}
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="flex items-center gap-1.5 text-red-500 hover:text-red-600 body4 px-1 py-1 transition-colors cursor-pointer"
+                  title="아이템 삭제"
+                >
+                  <Trash2 size={16} strokeWidth={1.8} />
+                  <span>Delete</span>
+                </button>
+              )}
+
+              {/* 2. 우측 버튼들: [편집 중] Cancel / Save  vs  [평소] Edit */}
               {isEditing ? (
                 <div className="flex items-center gap-2">
                   <button
@@ -539,21 +546,21 @@ export default function ItemInfoSection({
                     onClick={() => setIsEditing(false)}
                     className="px-3 py-1 text-dark-gray hover:text-black body4 cursor-pointer"
                   >
-                    <span className="body4">Cancel</span>
+                    Cancel
                   </button>
                   <button
                     type="button"
                     onClick={() => onSave(form)}
                     className="px-4 py-1 bg-black text-white rounded-xs body4 hover:bg-black/80 transition-colors cursor-pointer"
                   >
-                    <span className="body4">Save</span>
+                    Save
                   </button>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
-                  className=" px-3.5 py-1  !text-dark-gray hover:!text-black hover:text-white transition-colors cursor-pointer"
+                  className="px-3.5 py-1 bg-black text-white hover:bg-black/60 transition-colors cursor-pointer rounded-xs"
                 >
                   <span className="body4">Edit</span>
                 </button>

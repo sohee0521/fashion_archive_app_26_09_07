@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import PaperOpen from "../../../img/paper_open.png";
 import PaperClose from "../../../img/paper_close.png";
@@ -6,33 +6,66 @@ import Stars from "../../../img/stars.png";
 import hanger from "../../../img/hanger.svg";
 import { ChevronLeft, ChevronRight, MoveRight, Plus } from "lucide-react";
 
-// 2~6개 개수별 각 아이템의 상대적 위치 (w-[180px] h-[200px] 축소 기준)
+// 🔥 스크롤 트리거 쇼쇼쇽 래퍼 컴포넌트
+function ScrollFadeIn({ children, delay = 0, className = "" }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const domRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+          } else {
+            setIsVisible(false);
+          }
+        });
+      },
+      {
+        threshold: 0.15,
+        rootMargin: "0px 0px -40px 0px",
+      },
+    );
+
+    const currentRef = domRef.current;
+    if (currentRef) observer.observe(currentRef);
+    return () => currentRef && observer.unobserve(currentRef);
+  }, []);
+
+  return (
+    <div
+      ref={domRef}
+      style={{ transitionDelay: isVisible ? `${delay}ms` : "0ms" }}
+      className={`transition-all duration-700 ease-out transform ${
+        isVisible
+          ? "opacity-100 translate-y-0 scale-100"
+          : "opacity-0 translate-y-10 scale-[0.99]"
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+// 2~6개 개수별 각 아이템의 상대적 위치
 const LOOK_LAYOUT_PRESETS = {
   2: ["top-5 left-4", "bottom-5 right-4"],
   3: ["top-[50%] -translate-y-1/2 left-2", "top-2 right-4", "bottom-2 right-4"],
   4: ["top-8 left-2", "bottom-2 left-2", "top-2 right-3", "bottom-8 right-3"],
   5: [
     "top-0 left-1",
-
     "top-0 right-1",
-
     "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
-
     "bottom-0 left-1",
-
     "bottom-0 right-1",
   ],
   6: [
     "top-[-15px] left-1/2 -translate-x-1/2",
-
     "top-[35px] left-[-5px]",
-
     "top-[90px] left-[100px] -translate-x-1/2",
-
     "top-[35px] right-[-5px]",
-
     "bottom-[-5px] left-2",
-
     "bottom-[-5px] right-2",
   ],
 };
@@ -121,8 +154,11 @@ export default function LookbookSection() {
 
   return (
     <section className="w-full lg:px-[180px] sm:px-[100px] px-[50px] py-[100px] bg-[linear-gradient(to_bottom,#ffffff_0%,var(--color-background)_10%,var(--color-background)_90%,#ffffff_100%)] flex flex-col md:flex-row items-center justify-between gap-16 overflow-hidden">
-      {/* 좌측 타이틀 & 링크 */}
-      <div className="flex flex-col items-center md:items-start gap-4">
+      {/* 좌측 타이틀 & 링크 쇼쇼쇽 */}
+      <ScrollFadeIn
+        delay={100}
+        className="flex flex-col items-center md:items-start gap-4"
+      >
         <div>
           <div className="relative left-[200px] top-[50px] z-0 pointer-events-none">
             <img src={Stars} alt="Stars" />
@@ -142,11 +178,14 @@ export default function LookbookSection() {
           View All Looks
           <MoveRight strokeWidth={1.2} />
         </Link>
-      </div>
+      </ScrollFadeIn>
 
-      {/* 우측 룩북 인터랙션 뷰어 */}
-      <div className="relative flex items-center gap-4 sm:gap-6 [perspective:1000px]">
-        {/* 이전 버튼 (룩북이 2개 이상일 때만 활성화) */}
+      {/* 우측 룩북 인터랙션 뷰어 쇼쇼쇽 */}
+      <ScrollFadeIn
+        delay={250}
+        className="relative flex items-center gap-4 sm:gap-6 [perspective:1000px]"
+      >
+        {/* 이전 버튼 */}
         <button
           type="button"
           onClick={handlePrev}
@@ -160,7 +199,7 @@ export default function LookbookSection() {
           <ChevronLeft strokeWidth={1.2} size={26} className="text-black" />
         </button>
 
-        {/* 메인 종이 노트 컨테이너 (종이 + 바깥 하단 타이틀 세로 배치) */}
+        {/* 메인 종이 노트 컨테이너 */}
         <div className="flex flex-col items-center gap-4">
           <div className="relative w-[300px] h-[405px] flex items-center justify-center select-none">
             {/* 뒤에 겹쳐 있는 대기용 종이 효과 */}
@@ -172,7 +211,7 @@ export default function LookbookSection() {
               />
             </div>
 
-            {/* 실제 페이지 카드 (넘길 때 회전 애니메이션) */}
+            {/* 실제 페이지 카드 (넘길 때 회전 애니메이션 유지) */}
             <div
               key={currentLook ? currentLook.id : "empty"}
               className={`relative w-full h-full flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${
@@ -229,7 +268,7 @@ export default function LookbookSection() {
                     </div>
 
                     {/* 미니 원형 아이템 캔버스 프리뷰 */}
-                    <div className="relative w-[200px] h-[240px]  flex items-center justify-center select-none">
+                    <div className="relative w-[200px] h-[240px] flex items-center justify-center select-none">
                       {(currentLook?.items || []).map((it, itemIdx) => {
                         const positions =
                           LOOK_LAYOUT_PRESETS[currentLook.items.length] ||
@@ -277,7 +316,7 @@ export default function LookbookSection() {
           </div>
         </div>
 
-        {/* 다음 버튼 (룩북이 2개 이상일 때만 활성화) */}
+        {/* 다음 버튼 */}
         <button
           type="button"
           onClick={handleNext}
@@ -307,7 +346,7 @@ export default function LookbookSection() {
             className="w-full h-full object-contain pointer-events-none drop-shadow-sm"
           />
         </div>
-      </div>
+      </ScrollFadeIn>
     </section>
   );
 }

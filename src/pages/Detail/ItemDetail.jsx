@@ -21,9 +21,9 @@ export default function ItemDetail() {
   const [isEditing, setIsEditing] = useState(false);
 
   // 1. 데이터 로드 (Items, Custom Folders, Matched Lookbooks)
+  // ItemDetail.jsx의 데이터 로드 useEffect 부분 수정
   useEffect(() => {
     try {
-      // 1) 아이템 목록 로드
       const savedItems = JSON.parse(
         localStorage.getItem(STORAGE_KEYS.ITEMS) || "[]",
       );
@@ -31,12 +31,10 @@ export default function ItemDetail() {
         ? savedItems.map((it) => it.folder).filter(Boolean)
         : [];
 
-      // 2) 커스텀 등록 폴더 로드
       const customFolders = JSON.parse(
         localStorage.getItem(STORAGE_KEYS.CUSTOM_FOLDERS) || "[]",
       );
 
-      // 3) 폴더 목록 통합 (None + 아이템 폴더 + 커스텀 폴더)
       const mergedFolders = Array.from(
         new Set([
           "None",
@@ -46,13 +44,25 @@ export default function ItemDetail() {
       ).filter((f) => f !== "All");
       setAvailableFolders(mergedFolders);
 
-      // 현재 아이템 설정
       if (Array.isArray(savedItems)) {
         const current = savedItems.find((it) => String(it.id) === String(id));
-        if (current) setItem(current);
+        if (current) {
+          // 🔥 핵심: detailImages가 비어있는데 imageUrl이나 url 스크랩 이미지가 있다면 자동으로 detailImages에 넣어줌
+          let images = Array.isArray(current.detailImages)
+            ? [...current.detailImages]
+            : [];
+          if (images.length === 0 && current.imageUrl) {
+            images = [current.imageUrl];
+          }
+
+          setItem({
+            ...current,
+            detailImages: images,
+            imageUrl: images[0] || current.imageUrl || "",
+          });
+        }
       }
 
-      // 룩북 매칭
       const savedLbs = JSON.parse(
         localStorage.getItem(STORAGE_KEYS.LOOKBOOKS) || "[]",
       );
@@ -115,13 +125,45 @@ export default function ItemDetail() {
     setIsEditing(false);
   };
 
-  // 4. 이미지 추가/삭제 핸들러
+  // 🔥 4. 아이템 삭제 핸들러 추가
+  const handleDeleteItem = () => {
+    if (!window.confirm("이 아이템을 옷장에서 완전히 삭제하시겠습니까?"))
+      return;
+
+    try {
+      // 1) fitlog_items에서 삭제
+      const savedItems = JSON.parse(
+        localStorage.getItem(STORAGE_KEYS.ITEMS) || "[]",
+      );
+      const updatedItems = savedItems.filter(
+        (it) => String(it.id) !== String(id),
+      );
+      localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify(updatedItems));
+
+      // 2) fitlog_lookbooks 내부 items에서도 해당 아이템 정리
+      const savedLbs = JSON.parse(
+        localStorage.getItem(STORAGE_KEYS.LOOKBOOKS) || "[]",
+      );
+      const updatedLbs = savedLbs.map((lb) => ({
+        ...lb,
+        items: (lb.items || []).filter((it) => String(it.id) !== String(id)),
+      }));
+      localStorage.setItem(STORAGE_KEYS.LOOKBOOKS, JSON.stringify(updatedLbs));
+
+      alert("아이템이 삭제되었습니다.");
+      navigate("/archive");
+    } catch (err) {
+      console.error("아이템 삭제 실패:", err);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 5. 이미지 추가/삭제 핸들러
   const handleAddDetailImage = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !item) return;
 
     try {
-      // 🔥 원본 대신 압축된 Base64 생성
       const compressedImgUrl = await compressImage(file, 600, 0.7);
       const newImages = [...(item.detailImages || []), compressedImgUrl];
 
@@ -165,32 +207,23 @@ export default function ItemDetail() {
 
   return (
     <div className="w-full min-h-screen bg-white text-black flex flex-col pt-[80px]">
-      {/* 상단 배너 */}
-      <section className="w-full bg-base-pink pt-14 pb-10 px-8 sm:px-16 lg:px-[180px] relative overflow-hidden flex flex-col gap-6">
+      {/* 1. 상단 타이틀 배너 */}
+      <section className="w-full bg-base-pink pt-16 pb-12 px-8 sm:px-16 lg:px-[180px] relative overflow-hidden flex items-baseline gap-4">
         <div
-          className="absolute -left-12 sm:left-4 lg:left-[100px] top-1/2 -translate-y-[45%] w-[380px] h-[190px] rounded-[50%] pointer-events-none select-none z-0"
+          className="absolute -left-8 sm:left-4 lg:left-[100px] top-1/2 -translate-y-[45%] w-[200px] h-[100px] md:w-[240px] md:h-[120px] lg:w-[360px] lg:h-[180px] rounded-[50%] pointer-events-none select-none z-0"
           style={{
             background:
               "radial-gradient(ellipse at center, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.6) 35%, rgba(255, 233, 243, 0) 70%)",
           }}
         />
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4">
-          <h1 className="display1 text-accent-pink italic select-none">
+
+        <div className="relative z-10 flex items-baseline gap-4">
+          <h1 className="display1 text-accent-pink font-normal leading-none italic select-none">
             Archive
           </h1>
           <span className="body4 text-dark-gray select-none">
-            All your pieces, all in one place.
+            Curate your wardrobe, piece by piece.
           </span>
-        </div>
-        <div className="flex justify-end items-center gap-2 text-dark-gray pr-1 z-10 select-none">
-          <span
-            onClick={() => navigate("/archive")}
-            className="hover:text-black cursor-pointer body4"
-          >
-            Archive
-          </span>
-          <ChevronRight size={16} strokeWidth={1.5} />
-          <span className="body4 text-black font-medium">Item</span>
         </div>
       </section>
 
@@ -203,6 +236,7 @@ export default function ItemDetail() {
           availableFolders={availableFolders}
           setAvailableFolders={setAvailableFolders}
           onSave={handleSaveEdit}
+          onDelete={handleDeleteItem} // 🔥 삭제 핸들러 전달
           onAddImage={handleAddDetailImage}
           onRemoveImage={handleRemoveDetailImage}
         />

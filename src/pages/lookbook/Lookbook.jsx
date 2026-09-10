@@ -151,9 +151,14 @@ export default function Lookbook() {
         {/* 데이터가 없을 때 표시되는 빈 상태 */}
         {lookbooks.length === 0 ? (
           <div className="relative z-10 w-full py-24 flex flex-col items-center justify-center gap-4 text-center">
-            <p className="caption3 text-dark-gray ">
-              아직 등록된 룩북이 없습니다.
-            </p>
+            <div>
+              <p className="caption1 font-medium text-accent-pink">
+                아직 등록된 룩이 없어요.
+              </p>
+              <p className="caption3 text-dark-gray ">
+                옷장의 아이템을 모아 나만의 코디를 완성해보세요!
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => navigate("/newLookbook")}

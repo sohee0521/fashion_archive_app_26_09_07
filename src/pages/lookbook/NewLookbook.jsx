@@ -1,6 +1,15 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Edit2, Plus, X, ChevronRight, Trash2 } from "lucide-react";
+import {
+  Edit2,
+  Plus,
+  X,
+  ChevronRight,
+  Trash2,
+  CheckCircle2,
+  Sparkles,
+  ArrowRight,
+} from "lucide-react";
 import Stars from "../../img/stars.png";
 import hanger from "../../img/hanger.svg";
 import pose from "../../img/pose.png";
@@ -16,7 +25,6 @@ const SLOT_COORDINATES = [
 
 const CATEGORIES = ["All", "Top", "Bottom", "Outer", "Shoes", "Acc"];
 
-// 첫 번째 디테일 이미지(detailImages[0]) 또는 imageUrl 추출
 const getMainDetailImage = (targetItem) => {
   if (!targetItem) return "";
   return targetItem.detailImages?.[0] || targetItem.imageUrl || "";
@@ -56,6 +64,9 @@ export default function NewLookbook() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [archiveItems, setArchiveItems] = useState([]);
+
+  // 🔥 룩북 저장 모달 상태 (null | "FIRST" | "SUBSEQUENT")
+  const [modalType, setModalType] = useState(null);
 
   // 로컬 스토리지 불러오기
   useEffect(() => {
@@ -131,7 +142,12 @@ export default function NewLookbook() {
     return [first, second];
   }, [selectedItems]);
 
-  const handleAddItem = (item) => {
+  // 룩북에 드롭으로 아이템 추가
+  const handleAddItemByDrop = (item) => {
+    if (selectedItems.some((s) => String(s.id) === String(item.id))) {
+      alert("이미 이 룩북에 추가된 아이템입니다.");
+      return;
+    }
     if (selectedItems.length >= 6) {
       alert("아이템은 최대 6개까지 배치할 수 있습니다.");
       return;
@@ -161,12 +177,13 @@ export default function NewLookbook() {
     if (!data) return;
     try {
       const item = JSON.parse(data);
-      handleAddItem(item);
+      handleAddItemByDrop(item);
     } catch (err) {
       console.error("드롭 파싱 실패", err);
     }
   };
 
+  // 🔥 룩북 저장 핸들러 + 첫 저장 여부 판별
   const handleSaveLookbook = () => {
     if (selectedItems.length < 2) {
       alert("최소 2개 이상의 아이템을 추가해주세요.");
@@ -205,14 +222,29 @@ export default function NewLookbook() {
       }
 
       localStorage.setItem("fitlog_lookbooks", JSON.stringify(updated));
-      navigate("/lookbook");
+
+      // 첫 룩북인지 여부에 따라 모달 타입 분기
+      if (updated.length === 1 && !isEditMode) {
+        setModalType("FIRST");
+      } else {
+        setModalType("SUBSEQUENT");
+      }
     } catch (err) {
       console.error("룩북 저장 실패:", err);
       alert("저장 실패: " + err.message);
     }
   };
 
-  // 🔥 룩북 삭제 핸들러
+  // 새 룩북 작성 캔버스 초기화
+  const handleResetForNewLookbook = () => {
+    setModalType(null);
+    setSelectedItems([]);
+    setLookTitle("Unnamed");
+    if (isEditMode) {
+      navigate("/newLookbook");
+    }
+  };
+
   const handleDeleteLookbook = () => {
     if (!window.confirm("룩북을 삭제하시겠습니까?")) return;
 
@@ -274,9 +306,9 @@ export default function NewLookbook() {
             flex flex-col shrink-0 shadow-2xs
           "
         >
-          <h2 className="display2 text-black pb-3 select-none shrink-0">
-            My Item
-          </h2>
+          <div className="flex items-baseline justify-between pb-3 shrink-0 select-none">
+            <h2 className="display2 text-black">My Item</h2>
+          </div>
 
           <div
             ref={tabScrollRef}
@@ -334,24 +366,39 @@ export default function NewLookbook() {
               >
                 {filteredItems.map((item) => {
                   const displayImage = getMainDetailImage(item);
+                  const isUsed = selectedItems.some(
+                    (selected) => String(selected.id) === String(item.id),
+                  );
 
                   return (
                     <div
                       key={item.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, item)}
-                      onClick={() => handleAddItem(item)}
-                      className="
-                        flex flex-col items-center gap-1.5 cursor-pointer group select-none shrink-0
-                        w-[96px] sm:w-[104px] md:w-full
-                      "
+                      draggable={!isUsed}
+                      onDragStart={(e) => !isUsed && handleDragStart(e, item)}
+                      onClick={() => navigate(`/itemDetail/${item.id}`)}
+                      className={`
+                        flex flex-col items-center gap-1.5 select-none shrink-0
+                        w-[96px] sm:w-[104px] md:w-full transition-all
+                        ${
+                          isUsed
+                            ? "opacity-40 cursor-not-allowed filter grayscale"
+                            : "cursor-pointer group hover:opacity-90"
+                        }
+                      `}
+                      title={
+                        isUsed
+                          ? "이미 사용된 아이템입니다"
+                          : "클릭: 상세페이지 / 드래그: 룩북 추가"
+                      }
                     >
-                      <div className="relative w-full aspect-square bg-[#F5F5F7] border border-[#EBEBEB] rounded-sm overflow-hidden group-hover:border-black/30 transition-all flex items-center justify-center shadow-2xs">
+                      <div className="relative w-full aspect-square bg-[#F5F5F7] border border-[#EBEBEB] rounded-sm overflow-hidden flex items-center justify-center shadow-2xs">
                         {displayImage ? (
                           <img
                             src={displayImage}
                             alt={item.title || item.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+                            className={`w-full h-full object-cover transition-transform duration-300 pointer-events-none ${
+                              !isUsed ? "group-hover:scale-105" : ""
+                            }`}
                           />
                         ) : (
                           <img
@@ -359,6 +406,14 @@ export default function NewLookbook() {
                             alt="No item"
                             className="w-7 h-7 opacity-30 pointer-events-none"
                           />
+                        )}
+
+                        {isUsed && (
+                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
+                            <span className="caption3  text-white px-1.5 py-0.5 rounded bg-black/60">
+                              used
+                            </span>
+                          </div>
                         )}
                       </div>
 
@@ -486,7 +541,7 @@ export default function NewLookbook() {
                       <Plus size={20} strokeWidth={1.5} />
                     </div>
                     <span className="body4 text-[#FF85C0] mt-1 whitespace-nowrap">
-                      Add Your Item
+                      Drop Here
                     </span>
                   </div>
                 );
@@ -508,7 +563,7 @@ export default function NewLookbook() {
             </div>
           </div>
 
-          {/* 🔥 하단 버튼 영역: Edit 모드일 때는 Delete 버튼 노출 */}
+          {/* 하단 버튼 영역 */}
           <div
             className={`w-full flex items-center pt-2 z-20 ${
               isEditMode ? "justify-between" : "justify-end"
@@ -535,6 +590,66 @@ export default function NewLookbook() {
           </div>
         </div>
       </main>
+
+      {/* ─────────────────────────────────────────────────────────────
+          🔥 룩북 저장 모달 (문구 분기 + 버튼 통일: 아이템 추가하기 vs 새로운 룩북 만들기)
+      ───────────────────────────────────────────────────────────── */}
+      {modalType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-pink-100 flex flex-col items-center text-center select-none">
+            {/* 상단 아이콘 & 문구 분기 */}
+            {modalType === "FIRST" ? (
+              <>
+                <div className="w-12 h-12 rounded-full bg-base-pink/50 text-accent-pink flex items-center justify-center mb-4">
+                  <Sparkles size={26} strokeWidth={1.8} />
+                </div>
+                <h3 className="body2 font-bold text-black mb-1.5">
+                  첫 번째 룩북을 완성했어요!
+                </h3>
+                <p className="body4 text-dark-gray mb-6">
+                  나만의 첫 코디가 저장되었어요.
+                  <br />새 아이템을 추가하거나 새로운 룩북을 만들어보세요.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-full bg-base-pink/50 text-accent-pink flex items-center justify-center mb-4">
+                  <CheckCircle2 size={26} strokeWidth={2} />
+                </div>
+                <h3 className="body2 font-bold text-black mb-1.5">
+                  룩북이 저장되었어요!
+                </h3>
+                <p className="body4 text-dark-gray mb-6">
+                  새로운 코디가 성공적으로 아카이브되었습니다.
+                  <br />새 아이템을 추가하거나 또 다른 룩북을 만들어보세요.
+                </p>
+              </>
+            )}
+
+            {/* 🔥 통일된 2개 버튼: 1. 아이템 추가하기 (/home) / 2. 새로운 룩북 만들기 */}
+            <div className="flex gap-2.5 w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  setModalType(null);
+                  navigate("/home");
+                }}
+                className="flex-1 py-2.5 rounded-full border border-[#EBEBEB] text-dark-gray body4 hover:bg-stone-50 transition-colors cursor-pointer"
+              >
+                아이템 추가하기
+              </button>
+              <button
+                type="button"
+                onClick={handleResetForNewLookbook}
+                className="flex-1 py-2.5 rounded-full bg-black text-white body4 font-medium flex items-center justify-center gap-1.5 hover:bg-black/85 transition-colors cursor-pointer shadow-sm"
+              >
+                <span>새로운 룩북 만들기</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

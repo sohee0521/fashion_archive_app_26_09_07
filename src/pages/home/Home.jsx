@@ -5,7 +5,7 @@ import LookbookSection from "./component/LookbookSection";
 import StyleSection from "./component/StyleSection";
 import { compressImage } from "../../utils/compressImage";
 
-// 초기 폼 상태 상수 (styles 배열 추가)
+// 초기 폼 상태 상수
 const INITIAL_FORM_DATA = {
   title: "",
   isOwned: "Have",
@@ -13,7 +13,7 @@ const INITIAL_FORM_DATA = {
   folder: "None",
   category: "Top",
   style: "None",
-  styles: [], // 🔥 다중 스타일 지원
+  styles: [], // 다중 스타일 지원
   previewImage: "",
   url: "",
 };
@@ -73,7 +73,6 @@ export default function Home() {
     if (!file) return;
 
     try {
-      // 🔥 원본 대신 압축된 Base64로 설정
       const compressed = await compressImage(file, 600, 0.7);
       setFormData((prev) => ({
         ...prev,
@@ -84,14 +83,13 @@ export default function Home() {
     }
   };
 
-  // 4. 아이템 저장 (🔥 detailImages 및 styles 배열 저장 보강)
+  // 4. 아이템 저장
   const handleSaveItem = () => {
     if (!formData.title.trim()) {
       alert("상품 제목을 입력해주세요.");
       return;
     }
 
-    // 스타일 배열 확정 (styles 우선, 없을 시 단수 style 참조)
     const resolvedStyles =
       Array.isArray(formData.styles) && formData.styles.length > 0
         ? formData.styles
@@ -106,10 +104,8 @@ export default function Home() {
       memo: formData.memo,
       folder: formData.folder || "None",
       category: formData.category || "Top",
-      // 🔥 스타일 복수/단수형 동시 대응
       styles: resolvedStyles,
       style: resolvedStyles[0] || "None",
-      // 🔥 대표 이미지 및 디테일 이미지 목록 동기화
       imageUrl: formData.previewImage || "",
       detailImages: formData.previewImage ? [formData.previewImage] : [],
       url: formData.url || "",

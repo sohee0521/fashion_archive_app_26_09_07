@@ -1,7 +1,50 @@
+import React, { useState, useEffect, useRef } from "react";
 import { MoveRight } from "lucide-react";
 import logoImg from "../../../img/Logo1.png";
 import { Link, useNavigate } from "react-router-dom";
 import hanger from "../../../img/hanger.svg";
+
+// 🔥 스크롤 트리거 쇼쇼쇽 래퍼 컴포넌트
+function ScrollFadeIn({ children, delay = 0, className = "" }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const domRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+          } else {
+            setIsVisible(false);
+          }
+        });
+      },
+      {
+        threshold: 0.15,
+        rootMargin: "0px 0px -40px 0px",
+      },
+    );
+
+    const currentRef = domRef.current;
+    if (currentRef) observer.observe(currentRef);
+    return () => currentRef && observer.unobserve(currentRef);
+  }, []);
+
+  return (
+    <div
+      ref={domRef}
+      style={{ transitionDelay: isVisible ? `${delay}ms` : "0ms" }}
+      className={`transition-all duration-700 ease-out transform ${
+        isVisible
+          ? "opacity-100 translate-y-0 scale-100"
+          : "opacity-0 translate-y-10 scale-[0.99]"
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function ClosetSection({ items, setIsFormOpen }) {
   const navigate = useNavigate();
@@ -54,18 +97,24 @@ export default function ClosetSection({ items, setIsFormOpen }) {
         <img src={logoImg} alt="Logo" />
       </div>
 
-      {/* 헤더 타이틀 */}
-      <div className="w-full mb-16 relative z-10 flex items-center gap-[5px] lg:px-[180px] sm:px-[100px] px-[50px]">
+      {/* 헤더 타이틀 쇼쇼쇽 */}
+      <ScrollFadeIn
+        delay={100}
+        className="w-full mb-16 relative z-10 flex items-center gap-[5px] lg:px-[180px] sm:px-[100px] px-[50px]"
+      >
         <h2 className="display1 text-black leading-none font-normal select-none">
           My Closet <span className="font-light">—</span>
         </h2>
         <span className="body4 text-dark-gray tracking-tight select-none">
           Collect what you want
         </span>
-      </div>
+      </ScrollFadeIn>
 
-      {/* 무한 롤링 트랙 */}
-      <div className="w-full overflow-hidden py-6 cursor-pointer">
+      {/* 무한 롤링 트랙 쇼쇼쇽 */}
+      <ScrollFadeIn
+        delay={250}
+        className="w-full overflow-hidden py-6 cursor-pointer"
+      >
         <div className="animate-marquee flex items-center gap-10">
           {[...Array(2)].map((_, loopIdx) => (
             <div key={loopIdx} className="flex items-center gap-10 shrink-0">
@@ -100,7 +149,7 @@ export default function ClosetSection({ items, setIsFormOpen }) {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
-                        // 1-B. 등록된 이미지가 전혀 없을 때: 핑크 배경 + 옷걸이 + 상품명
+                        // 1-B. 등록된 이미지가 전혀 없을 때
                         <div className="w-full h-full bg-base-pink/60 flex flex-col items-center justify-center gap-2.5 p-4 text-center select-none">
                           <img src={hanger} alt="Hanger" />
                           <span className="caption3 text-accent-pink tracking-tight font-normal line-clamp-2">
@@ -129,10 +178,13 @@ export default function ClosetSection({ items, setIsFormOpen }) {
             </div>
           ))}
         </div>
-      </div>
+      </ScrollFadeIn>
 
-      {/* 우측 하단 View More */}
-      <div className="w-full mx-auto pr-[50px] sm:pr-[100px] md:pr-[180px] mt-12 flex justify-end">
+      {/* 우측 하단 View More 쇼쇼쇽 */}
+      <ScrollFadeIn
+        delay={150}
+        className="w-full mx-auto pr-[50px] sm:pr-[100px] md:pr-[180px] mt-12 flex justify-end"
+      >
         <Link
           to="/archive"
           className="display3 hover:!text-accent-pink transition-colors flex items-center gap-2"
@@ -140,7 +192,7 @@ export default function ClosetSection({ items, setIsFormOpen }) {
           View More
           <MoveRight strokeWidth={1.2} />
         </Link>
-      </div>
+      </ScrollFadeIn>
     </section>
   );
 }
