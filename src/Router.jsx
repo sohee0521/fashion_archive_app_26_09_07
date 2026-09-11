@@ -1,5 +1,7 @@
 import { HashRouter, Route, Routes, useLocation } from "react-router-dom";
-import LandingView from "./pages/landing/Landing"; // 새로 만든 랜딩 컴포넌트
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import LandingView from "./pages/landing/Landing";
 import Home from "./pages/home/Home";
 import Archive from "./pages/archive/Archive";
 import ItemDetail from "./pages/Detail/ItemDetail";
@@ -9,6 +11,8 @@ import Data from "./pages/data/Data";
 import Error from "./pages/Error";
 import Header from "./component/Header";
 import Footer from "./component/Footer";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 
 function AppLayout() {
   const location = useLocation();
@@ -30,6 +34,8 @@ function AppLayout() {
         <Route path="/newLookbook" element={<NewLookbook />} />
         <Route path="/newLookbook/:id" element={<NewLookbook />} />
         <Route path="/data" element={<Data />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
 
         <Route path="*" element={<Error />} />
       </Routes>

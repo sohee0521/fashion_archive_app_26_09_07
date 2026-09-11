@@ -275,8 +275,16 @@ export default function HeroSection({
     }
   };
 
-  // 🔥 저장 버튼 로직 (디테일 이미지 데이터 누락 없이 완벽 저장)
+  // 🔥 저장 버튼 로직 (비로그인 시 차단 후 로그인 페이지로 이동)
   const onSaveClick = () => {
+    // 🔒 로그인 체크 가드
+    const isLoggedIn = localStorage.getItem("fitlog_logged_in") === "true";
+    if (!isLoggedIn) {
+      alert("로그인이 필요한 서비스입니다.");
+      navigate("/login");
+      return;
+    }
+
     const trimmedTitle = formData.title?.trim();
 
     if (!hasUrl && !trimmedTitle) {
@@ -370,7 +378,7 @@ export default function HeroSection({
         >
           <input
             type="text"
-            placeholder="소장 중이거나 갖고싶은 상품 링크를 붙여넣어 보세요!"
+            placeholder="소장 중이거나 갖고싶은 아이템 링크를 붙여넣어 보세요!"
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             disabled={isFetchingOg}
@@ -398,7 +406,17 @@ export default function HeroSection({
         {!isFormOpen && (
           <button
             type="button"
-            onClick={handleOpenWithoutLink}
+            onClick={() => {
+              // 🔒 링크 없이 추가할 때도 비로그인 시 로그인 페이지로 유도
+              const isLoggedIn =
+                localStorage.getItem("fitlog_logged_in") === "true";
+              if (!isLoggedIn) {
+                alert("로그인이 필요한 서비스입니다.");
+                navigate("/login");
+                return;
+              }
+              handleOpenWithoutLink();
+            }}
             className="caption3 text-light-text underline hover:text-black transition-colors cursor-pointer"
           >
             or add without a link
@@ -406,20 +424,33 @@ export default function HeroSection({
         )}
       </ScrollFadeIn>
 
-      {/* 3. 등록 폼 영역 쇼쇼쇽 */}
+      {/* 3. 등록 폼 영역  */}
       {isFormOpen && (
         <ScrollFadeIn delay={150} className="w-full max-w-3xl">
-          <div className="w-full bg-white rounded-lg shadow-sm border border-gray/40 overflow-hidden mt-6 p-6">
+          <div
+            className={`w-full bg-white rounded-lg shadow-sm border border-gray/40 overflow-hidden mt-6 p-6 transition-all duration-300 ${
+              isFetchingOg ? "opacity-90 ring-2 ring-accent-pink/30" : ""
+            }`}
+          >
             {/* 링크 프리뷰 카드 */}
             {hasUrl && (
-              <div className="border border-gray/30 rounded-lg overflow-hidden mb-8 bg-white shadow-2xs">
+              <div className="border border-gray/30 rounded-lg overflow-hidden mb-8 bg-white shadow-2xs relative">
+                {/* 상단 로딩 프로그레스 바 */}
+                {isFetchingOg && (
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-accent-pink/20 overflow-hidden z-20">
+                    <div className="w-full h-full bg-accent-pink animate-pulse" />
+                  </div>
+                )}
+
                 <div className="bg-[#FAFAFA] px-4 py-3 border-b border-gray/20 flex justify-between items-center select-none">
-                  <span className="body4 text-dark-gray ">Product Preview</span>
+                  <span className="body4 text-dark-gray flex items-center gap-2">
+                    Product Preview
+                  </span>
                   <a
                     href={formData.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="caption3  text-black hover:text-accent-pink flex items-center gap-1"
+                    className="caption3 text-black hover:text-accent-pink flex items-center gap-1"
                   >
                     <span className="body4 text-[14px]">OPEN</span>
                     <ExternalLink size={18} strokeWidth={1.5} />
@@ -428,17 +459,25 @@ export default function HeroSection({
 
                 <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-5 bg-white">
                   {/* 스크랩된 대표 이미지 썸네일 */}
-                  <div className="w-full sm:w-32 aspect-square rounded-md overflow-hidden bg-gray-100 shrink-0 border border-gray/20 flex items-center justify-center">
+                  <div className="w-full sm:w-32 aspect-square rounded-md overflow-hidden bg-gray-100 shrink-0 border border-gray/20 flex items-center justify-center relative">
                     {formData.previewImage ? (
                       <img
                         src={formData.previewImage}
                         alt="Scraped OG"
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover transition-opacity duration-500 ${
+                          isFetchingOg ? "opacity-60 blur-2xs" : "opacity-100"
+                        }`}
                       />
                     ) : (
-                      <span className="caption3 text-dark-gray text-center px-1">
-                        {isFetchingOg ? "이미지 로딩중..." : "이미지 없음"}
-                      </span>
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-stone-50">
+                        <Loader2
+                          size={24}
+                          className="animate-spin text-accent-pink"
+                        />
+                        <span className="caption3 text-dark-gray text-[11px] px-1 animate-pulse">
+                          이미지 탐색 중...
+                        </span>
+                      </div>
                     )}
                   </div>
 
@@ -447,9 +486,14 @@ export default function HeroSection({
                     <h4 className="body2 font-semibold text-black truncate">
                       {formData.title ||
                         (isFetchingOg
-                          ? "상품 정보를 불러오는 중입니다..."
+                          ? "상품 정보를 읽어오는 중..."
                           : "상품명이 지정되지 않았습니다")}
                     </h4>
+                    {isFetchingOg && (
+                      <p className="caption3 text-dark-gray animate-pulse duration-75">
+                        잠시만 기다려주세요. 썸네일과 제목을 채우고 있어요
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -662,7 +706,6 @@ export default function HeroSection({
                         }`}
                       >
                         <span>#{st}</span>
-
                         {isCustom && (
                           <span
                             onClick={(e) => handleDeleteStyle(e, st)}

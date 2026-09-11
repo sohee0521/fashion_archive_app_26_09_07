@@ -31,7 +31,7 @@ export default function Archive() {
 
   // 페이지네이션
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
+  const itemsPerPage = 16;
 
   // 카드별 폴더 선택 드롭다운 상태
   const [openFolderDropdownId, setOpenFolderDropdownId] = useState(null);
@@ -48,6 +48,11 @@ export default function Archive() {
   // 2. 로컬스토리지에서 아이템 및 커스텀 목록 로드
   useEffect(() => {
     window.scrollTo(0, 0);
+    const isLoggedIn = localStorage.getItem("fitlog_logged_in") === "true";
+    if (!isLoggedIn) {
+      setItems([]);
+      return;
+    }
     // 1) fitlog_items
     try {
       const savedItems = JSON.parse(

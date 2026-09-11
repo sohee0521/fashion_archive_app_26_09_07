@@ -56,6 +56,14 @@ export default function ClosetSection({ items: initialItems, setIsFormOpen }) {
   useEffect(() => {
     const loadLatestItems = () => {
       try {
+        // 🔒 [핵심] 로그인 상태가 아니면 데이터 안 보이게 빈 배열 처리!
+        const isLoggedIn = localStorage.getItem("fitlog_logged_in") === "true";
+        if (!isLoggedIn) {
+          setItems([]);
+          return;
+        }
+
+        // 로그인 상태일 때만 정상적으로 불러오기
         const saved = JSON.parse(localStorage.getItem("fitlog_items") || "[]");
         setItems(saved);
       } catch (e) {
@@ -161,6 +169,17 @@ export default function ClosetSection({ items: initialItems, setIsFormOpen }) {
                       if (item) {
                         navigate(`/itemDetail/${item.id}`);
                       } else {
+                        // 🔥 [로그인 가드 추가] 비로그인 시 차단 후 로그인 페이지로 이동
+                        const isLoggedIn =
+                          localStorage.getItem("fitlog_logged_in") === "true";
+                        if (!isLoggedIn) {
+                          alert("로그인이 필요한 서비스입니다.");
+                          navigate("/login");
+                          return;
+                        }
+
+                        // 🔥 빈 슬롯 클릭 시 화면 맨 위로 부드럽게 스크롤 이동 후 폼 열기
+                        window.scrollTo({ top: 0, behavior: "smooth" });
                         setIsFormOpen(true);
                       }
                     }}

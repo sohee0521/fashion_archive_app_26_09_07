@@ -152,6 +152,17 @@ export default function LookbookSection() {
 
   const currentLook = looks[currentIndex];
 
+  // 🔥 공통 로그인 체크 핸들러
+  const handleProtectedAction = (callback) => {
+    const isLoggedIn = localStorage.getItem("fitlog_logged_in") === "true";
+    if (!isLoggedIn) {
+      alert("로그인이 필요한 서비스입니다.");
+      navigate("/login");
+      return;
+    }
+    callback();
+  };
+
   return (
     <section className="w-full lg:px-[180px] sm:px-[100px] px-[50px] py-[100px] bg-[linear-gradient(to_bottom,#ffffff_0%,var(--color-background)_10%,var(--color-background)_90%,#ffffff_100%)] flex flex-col md:flex-row items-center justify-between gap-16 overflow-hidden">
       {/* 좌측 타이틀 & 링크 쇼쇼쇽 */}
@@ -241,7 +252,9 @@ export default function LookbookSection() {
                     </div>
 
                     <div
-                      onClick={() => navigate("/newLookbook")}
+                      onClick={() =>
+                        handleProtectedAction(() => navigate("/newLookbook"))
+                      }
                       className="flex flex-col items-center justify-center gap-2 cursor-pointer group my-auto"
                     >
                       <div className="w-11 h-11 rounded-full border border-dashed border-accent-pink flex items-center justify-center text-accent-pink group-hover:scale-110 transition-transform">
@@ -257,7 +270,11 @@ export default function LookbookSection() {
                 ) : (
                   // 등록된 룩북이 있을 때
                   <div
-                    onClick={() => navigate(`/newLookbook/${currentLook.id}`)}
+                    onClick={() =>
+                      handleProtectedAction(() =>
+                        navigate(`/newLookbook/${currentLook.id}`),
+                      )
+                    }
                     className="w-full h-full flex flex-col pb-[30px] justify-between items-center cursor-pointer"
                   >
                     {/* LOOK 번호 헤더 */}

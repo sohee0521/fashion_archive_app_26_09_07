@@ -8,6 +8,13 @@ export default function StyleSection() {
   const sectionRef = useRef(null);
 
   useEffect(() => {
+    // 🔒 [추가] 로그인 상태가 아니면 통계용 아이템을 비우고 종료
+    const isLoggedIn = localStorage.getItem("fitlog_logged_in") === "true";
+    if (!isLoggedIn) {
+      setItems([]);
+      return;
+    }
+
     try {
       const savedItems = JSON.parse(
         localStorage.getItem("fitlog_items") || "[]",

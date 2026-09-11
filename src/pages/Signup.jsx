@@ -32,11 +32,8 @@ export default function Signup() {
         {/* 타이틀 영역 */}
         <div className="flex flex-col gap-2 text-center">
           <h1 className="display1 text-accent-pink italic font-normal">
-            Create Account
+            Fitlog
           </h1>
-          <p className="body4 text-dark-gray">
-            Start organizing your closet with FitLog.
-          </p>
         </div>
 
         {/* 회원가입 폼 */}

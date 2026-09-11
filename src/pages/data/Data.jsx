@@ -36,6 +36,15 @@ export default function Data() {
   const hallOfFameSectionRef = useRef(null);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+    // 🔒 [추가] 로그인 상태가 아니면 데이터 초기화 후 종료
+    const isLoggedIn = localStorage.getItem("fitlog_logged_in") === "true";
+    if (!isLoggedIn) {
+      setItems([]);
+      setLookbooks([]);
+      setFolders(["None"]);
+      return;
+    }
     try {
       const savedItems = JSON.parse(
         localStorage.getItem("fitlog_items") || "[]",
@@ -278,12 +287,12 @@ export default function Data() {
 
       <main className="w-full flex flex-col gap-14 pt-[50px] lg:px-[100px] xl:px-[180px] px-[50px]">
         {/* 요약 배너 박스 */}
-        <div className="w-full bg-base-pink border border-pink-100 rounded-2xl px-8 py-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xs">
+        <div className="w-full bg-base-pink border border-pink-100 rounded-2xl px-8 py-12 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xs">
           <div className="flex flex-col text-left">
-            <span className="display2 h-[32px] text-black font-serif leading-tight">
+            <span className="display2 h-[32px] text-accent-pink font-serif leading-tight">
               &ldquo;
             </span>
-            <h3 className="display2 italic text-black font-normal tracking-tight">
+            <h3 className="display2 italic text-accent-pink font-normal tracking-tight">
               All About Your Style.
             </h3>
           </div>

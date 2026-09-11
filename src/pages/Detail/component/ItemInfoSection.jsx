@@ -5,6 +5,11 @@ import hanger from "../../../img/hanger.svg";
 const DEFAULT_STYLES = ["Casual", "Feminine", "Hip", "Y2k"];
 const CATEGORIES = ["Top", "Bottom", "Outer", "Shoes", "Acc"];
 
+const getMainDetailImage = (targetItem) => {
+  if (!targetItem) return "";
+  return targetItem.detailImages?.[0] || targetItem.imageUrl || "";
+};
+
 export default function ItemInfoSection({
   item,
   isEditing,
@@ -12,7 +17,7 @@ export default function ItemInfoSection({
   availableFolders,
   setAvailableFolders,
   onSave,
-  onDelete, // 🔥 삭제 핸들러 prop 추가
+  onDelete,
   onAddImage,
   onRemoveImage,
 }) {
@@ -44,6 +49,7 @@ export default function ItemInfoSection({
   });
 
   const hasUrl = Boolean(item?.url && item.url.trim());
+  const mainImage = getMainDetailImage(item);
 
   useEffect(() => {
     if (item) {
@@ -152,65 +158,47 @@ export default function ItemInfoSection({
       <div className="w-full flex flex-col gap-5">
         <h2 className="display2 text-accent-pink italic select-none">Info</h2>
 
-        <div
-          className={`w-full flex flex-col ${hasUrl ? "lg:flex-row" : ""} gap-10 items-stretch`}
-        >
-          {/* 상품 프리뷰 윈도우 (링크 있을 때만) */}
-          {/* 상품 프리뷰 윈도우 (링크 있을 때만) */}
-          {hasUrl && (
-            <div className="w-full lg:w-[58%] border border-gray/40 rounded-sm bg-white overflow-hidden flex flex-col shadow-2xs">
-              <div className="px-4 py-2.5 border-b border-gray/30 bg-[#FAFAFA] flex justify-between items-center select-none">
-                <span className="caption3 text-dark-gray">Product Preview</span>
-              </div>
+        <div className="w-full flex flex-col lg:flex-row gap-10 items-stretch">
+          {/* 🔥 대표 이미지 프리뷰 윈도우 (호버 시 Visit Site 노출) */}
+          <div className="w-full lg:w-[58%] border border-gray/40 rounded-sm bg-white overflow-hidden flex flex-col shadow-2xs">
+            <div className="px-4 py-2.5 border-b border-gray/30 bg-[#FAFAFA] flex justify-between items-center select-none">
+              <span className="caption3 text-dark-gray">Main Image</span>
+            </div>
 
-              <div className="relative w-full h-[480px] sm:h-[560px] bg-white overflow-hidden group">
-                <iframe
-                  src={item.url}
-                  title="Product Preview"
-                  className="w-full h-full border-0 pointer-events-none"
-                  // 🔥 iframe 로딩 실패나 보안 차단 시 대비 (대부분의 브라우저는 보안상 iframe 에러를 직접 잡기 힘들므로 폴백 레이어를 함께 활용합니다)
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                  }}
+            <div className="relative w-full h-[480px] sm:h-[560px] bg-[#F5F5F7] overflow-hidden flex items-center justify-center group">
+              {mainImage ? (
+                <img
+                  src={mainImage}
+                  alt={item.title || "Item preview"}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
                 />
+              ) : (
+                <img
+                  src={hanger}
+                  alt="No image"
+                  className="w-16 h-16 opacity-30 pointer-events-none"
+                />
+              )}
 
-                {/* 🔥 [특급 개선] iframe이 보안상 막혀서 안 보일 때 유저를 위한 안내 배너 및 버튼 */}
-                <div className="absolute inset-0 z-0 flex flex-col items-center justify-center p-6 text-center bg-[#FAFAFA] pointer-events-none">
-                  <div className="w-12 h-12 rounded-full bg-base-pink/50 text-accent-pink flex items-center justify-center mb-3">
-                    <ArrowUpRight size={22} strokeWidth={1.5} />
-                  </div>
-                  <p className="body3 text-black font-medium mb-1">
-                    미리보기가 제한된 링크예요
-                  </p>
-                  <p className="body4 text-dark-gray mb-5">
-                    원본 쇼핑몰에서 상품을 확인해 보세요!
-                  </p>
-                </div>
-
-                {/* 마우스 올렸을 때 전체 오버레이 링크 */}
+              {/* 🔥 링크가 있을 때만 마우스 올리면 Visit Site 오버레이 버튼 등장 */}
+              {hasUrl && (
                 <a
                   href={item.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="absolute inset-0 z-10 flex items-end justify-end p-4 bg-black/0 group-hover:bg-black/10 transition-colors"
+                  className="absolute inset-0 z-10 flex items-end justify-end p-4 bg-black/0 group-hover:bg-black/15 transition-colors"
                 >
-                  <span className="opacity-0 group-hover:opacity-100 bg-black/75 text-white px-3 py-1.5 rounded-full caption3 flex items-center gap-1.5 shadow-md transition-opacity">
+                  <span className="opacity-0 group-hover:opacity-100 bg-black/80 text-white px-3.5 py-2 rounded-full caption3 flex items-center gap-1.5 shadow-lg transition-all transform translate-y-1 group-hover:translate-y-0">
                     <span>Visit Site</span>
-                    <ArrowUpRight size={14} strokeWidth={1.5} />
+                    <ArrowUpRight size={14} strokeWidth={1.8} />
                   </span>
                 </a>
-              </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* 우측 편집 영역 */}
-          <div
-            className={`flex flex-col justify-between py-[20px] ${
-              hasUrl
-                ? "flex-1"
-                : "w-full max-w-3xl bg-white border border-gray/30 rounded-sm p-6 sm:p-8 shadow-2xs"
-            }`}
-          >
+          <div className="flex-1 flex flex-col justify-between py-[20px]">
             <div className="flex-1 flex flex-col justify-start gap-5 py-1">
               {/* Want / Have */}
               <div className="flex flex-col gap-1.5">
@@ -530,13 +518,12 @@ export default function ItemInfoSection({
               </div>
             </div>
 
-            {/* 🔥 하단 버튼 영역: Edit 모드일 때만 좌측에 Delete 버튼 노출 */}
+            {/* 하단 버튼 영역 */}
             <div
               className={`w-full flex items-center mt-6 pt-4 border-t border-gray/20 ${
                 isEditing ? "justify-between" : "justify-end"
               }`}
             >
-              {/* 1. 편집 모드일 때: [좌측] Delete 버튼 */}
               {isEditing && (
                 <button
                   type="button"
@@ -549,7 +536,6 @@ export default function ItemInfoSection({
                 </button>
               )}
 
-              {/* 2. 우측 버튼들: [편집 중] Cancel / Save  vs  [평소] Edit */}
               {isEditing ? (
                 <div className="flex items-center gap-2">
                   <button

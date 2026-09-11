@@ -22,7 +22,7 @@ export default function CategoryBarChart({ categoryStats, isVisible }) {
         </span>
       </div>
 
-      <div className="bg-white border border-[#EBEBEB] rounded-2xl p-8 flex flex-col gap-6 shadow-2xs">
+      <div className="bg-white  p-8 flex flex-col gap-6 shadow-2xs">
         {categoryStats.map((cat) => (
           <div key={cat.name} className="flex items-center gap-4 sm:gap-6">
             <div className="w-28 flex items-center gap-2.5">

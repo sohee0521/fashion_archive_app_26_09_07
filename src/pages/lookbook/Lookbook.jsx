@@ -1,52 +1,37 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MoveRight, Plus } from "lucide-react";
+import { MoveRight, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import Stars from "../../img/stars.png";
 import hanger from "../../img/hanger.svg";
 import paperBg from "../../img/paper_open.png";
 
-// 2~6개 개수별 각 아이템의 상대적 위치 (w-[210px] h-[230px] 기준)
-const LOOK_LAYOUT_PRESETS = {
-  2: [
-    "top-4 left-4", // 좌상단
-    "bottom-4 right-4", // 우하단
-  ],
-  3: [
-    "top-[50%] -translate-y-1/2 left-3", // 좌측 1개
-    "top-[-15px] right-3", // 우상단
-    "bottom-0 right-3", // 우하단
-  ],
-  4: [
-    "top-0 left-4", // 좌상단
-    "bottom-4 left-4", // 좌하단
-    "top-4 right-4", // 우상단
-    "bottom-0 right-4", // 우하단
-  ],
-  5: [
-    "top-[-20px] left-0", // 상단 좌
-    "top-[-20px] right-0", // 상단 우
-    "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2", // 정중앙
-    "bottom-[-20px] left-0", // 하단 좌
-    "bottom-[-20px] right-0", // 하단 우
-  ],
-  6: [
-    "top-[-40px] left-1/2 -translate-x-1/2", // 상단 중앙
-    "top-[40px] left-[-15px]", // 중간 좌
-    "top-[65px] left-[100px] -translate-x-1/2", // 정가운데
-    "top-[40px] right-[-5px]", // 중간 우
-    "bottom-[-25px] left-3", // 하단 좌
-    "bottom-[-25px] right-3", // 하단 우
-  ],
-};
+// 🔥 1페이지(노트 1권)당 최대 4개 아이템을 배치하는 프리셋
+const LOOK_LAYOUT_PRESETS_4 = [
+  "top-4 left-4", // 1번: 좌상단
+  "top-4 right-4", // 2번: 우상단
+  "bottom-4 left-4", // 3번: 좌하단
+  "bottom-4 right-4", // 4번: 우하단
+];
 
 export default function Lookbook() {
   const navigate = useNavigate();
-  const [lookbooks, setLookbooks] = useState([]);
+  const [paginatedLookbooks, setPaginatedLookbooks] = useState([]);
 
-  // 로컬스토리지에서 유저가 만든 룩북 목록 로드
+  // 페이지네이션 상태 추가
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4; // 한 페이지에 보여줄 노트(룩북 카드) 개수
+
   // 로컬스토리지에서 룩북 목록 및 최신 아카이브 아이템 데이터 로드
   useEffect(() => {
+    window.scrollTo(0, 0);
+    // 🔒 [추가] 로그인 상태가 아니면 룩북 데이터를 비우고 종료
+    const isLoggedIn = localStorage.getItem("fitlog_logged_in") === "true";
+    if (!isLoggedIn) {
+      setPaginatedLookbooks([]);
+      return;
+    }
     let archiveItems = [];
+
     try {
       const savedItems = localStorage.getItem("fitlog_items");
       if (savedItems) {
@@ -61,17 +46,14 @@ export default function Lookbook() {
       try {
         const parsed = JSON.parse(savedLookbooks);
         if (Array.isArray(parsed)) {
-          const formatted = parsed.map((lb, index) => {
+          const expandedPages = [];
+
+          parsed.forEach((lb, index) => {
             const refreshedItems = (lb.items || []).map((it) => {
-              // 🔥 String(id)로 타입 강제 일치시켜 원본 아이템 매칭
               const matchedArchiveItem = archiveItems.find(
                 (arc) => String(arc.id) === String(it.id),
               );
 
-              // 1순위: fitlog_items 원본의 detailImages[0]
-              // 2순위: fitlog_items 원본의 imageUrl
-              // 3순위: 룩북 자체에 저장되어 있던 it.detailImages[0]
-              // 4순위: 룩북 자체에 저장되어 있던 it.imageUrl
               const resolvedImage =
                 matchedArchiveItem?.detailImages?.[0] ||
                 matchedArchiveItem?.imageUrl ||
@@ -85,22 +67,60 @@ export default function Lookbook() {
               };
             });
 
-            return {
-              ...lb,
-              lookNo: `LOOK ${String(index + 1).padStart(2, "0")}`,
-              items: refreshedItems,
-            };
+            // 🔥 핵심: 아이템이 4개를 넘어가면 4개씩 끊어서 별도의 페이지 카드로 분할 생성
+            const chunkSize = 4;
+            const totalChunks =
+              Math.ceil(refreshedItems.length / chunkSize) || 1;
+
+            if (totalChunks === 1) {
+              expandedPages.push({
+                ...lb,
+                uniqueKey: `${lb.id}-page-0`,
+                lookNo: `LOOK ${String(index + 1).padStart(2, "0")}`,
+                pageIndicator: "",
+                items: refreshedItems,
+              });
+            } else {
+              for (let i = 0; i < refreshedItems.length; i += chunkSize) {
+                const chunk = refreshedItems.slice(i, i + chunkSize);
+                const pageNum = Math.floor(i / chunkSize) + 1;
+                expandedPages.push({
+                  ...lb,
+                  uniqueKey: `${lb.id}-page-${pageNum}`,
+                  lookNo: `LOOK ${String(index + 1).padStart(2, "0")}`,
+                  pageIndicator: ` (${pageNum}/${totalChunks})`, // 예: (1/2)
+                  items: chunk,
+                });
+              }
+            }
           });
 
-          setLookbooks(formatted);
+          setPaginatedLookbooks(expandedPages);
+          setCurrentPage(1);
           return;
         }
       } catch (err) {
         console.error("룩북 로드 실패:", err);
       }
     }
-    setLookbooks([]);
+    setPaginatedLookbooks([]);
   }, []);
+
+  // 페이지네이션 계산 로직
+  const totalPages = Math.ceil(paginatedLookbooks.length / itemsPerPage) || 1;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentLookbooks = paginatedLookbooks.slice(
+    indexOfFirstItem,
+    indexOfLastItem,
+  );
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 400, behavior: "smooth" });
+    }
+  };
 
   return (
     <div className="w-full min-h-screen bg-white text-black flex flex-col pt-[80px]">
@@ -149,7 +169,7 @@ export default function Lookbook() {
         />
 
         {/* 데이터가 없을 때 표시되는 빈 상태 */}
-        {lookbooks.length === 0 ? (
+        {paginatedLookbooks.length === 0 ? (
           <div className="relative z-10 w-full py-24 flex flex-col items-center justify-center gap-4 text-center">
             <div>
               <p className="caption1 font-medium text-accent-pink">
@@ -172,12 +192,12 @@ export default function Lookbook() {
           <>
             {/* 룩북 목록 컨테이너 */}
             <div className="w-full relative z-10 flex flex-col gap-14 md:gap-0">
-              {lookbooks.map((look, idx) => {
+              {currentLookbooks.map((look, idx) => {
                 const isRightSide = idx % 2 === 1;
 
                 return (
                   <div
-                    key={look.id}
+                    key={look.uniqueKey}
                     className={`w-full flex items-center justify-center ${
                       isRightSide ? "md:justify-end" : "md:justify-start"
                     } ${idx !== 0 ? "md:-mt-16 lg:-mt-24" : ""}`}
@@ -202,27 +222,28 @@ export default function Lookbook() {
                         {/* 안전 박스 */}
                         <div className="absolute inset-0 z-10 pt-11 pb-6 px-4 sm:px-5 flex flex-col justify-between overflow-hidden">
                           {/* LOOK 번호 헤더 */}
-                          <div className="w-full pl-2 pt-1">
+                          <div className="w-full pl-2 pt-1 flex justify-between items-center pr-2">
                             <span className="display3 text-lg sm:text-[24px] pl-[7px] italic text-black">
                               {look.lookNo}
+                              <span className="text-xs text-dark-gray ml-1 font-sans font-normal">
+                                {look.pageIndicator}
+                              </span>
                             </span>
                           </div>
 
-                          {/* 내부 원형 아이템 (프리셋 맵 렌더링) */}
+                          {/* 내부 원형 아이템 (4개 프리셋 렌더링) */}
                           <div className="flex-1 w-full flex items-center justify-center my-auto">
                             <div className="relative w-[210px] h-[230px] select-none">
                               {(look.items || []).map((it, itemIdx) => {
-                                const positions =
-                                  LOOK_LAYOUT_PRESETS[look.items.length] ||
-                                  LOOK_LAYOUT_PRESETS[6];
-                                const positionClass = positions[itemIdx] || "";
+                                const positionClass =
+                                  LOOK_LAYOUT_PRESETS_4[itemIdx] || "";
 
                                 return (
                                   <div
                                     key={`${it.id}-${itemIdx}`}
                                     className={`absolute flex flex-col items-center gap-1 ${positionClass}`}
                                   >
-                                    <div className="w-[72px] h-[72px] rounded-full bg-white border border-gray/40 overflow-hidden flex items-center justify-center shadow-xs">
+                                    <div className="w-[66px] h-[66px] rounded-full bg-white border border-gray/40 overflow-hidden flex items-center justify-center shadow-xs">
                                       {it.imageUrl ? (
                                         <img
                                           src={it.imageUrl}
@@ -237,7 +258,7 @@ export default function Lookbook() {
                                         />
                                       )}
                                     </div>
-                                    <span className="caption3  text-dark-gray font-sans">
+                                    <span className="caption3 text-dark-gray font-sans">
                                       {it.category}
                                     </span>
                                   </div>
@@ -276,12 +297,47 @@ export default function Lookbook() {
               })}
             </div>
 
-            {/* 하단 페이지네이션 */}
-            <div className="w-full flex justify-center items-center gap-4 mt-20 sm:mt-24 text-xs text-dark-gray select-none">
-              <button className="hover:text-black cursor-pointer">&lt;</button>
-              <span className="text-black font-medium">1</span>
-              <button className="hover:text-black cursor-pointer">&gt;</button>
-            </div>
+            {/* 하단 페이지네이션 번호 제어 */}
+            {totalPages > 1 && (
+              <div className="w-full flex justify-center items-center gap-4 mt-20 sm:mt-24 text-xs text-dark-gray select-none">
+                <button
+                  type="button"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`cursor-pointer ${currentPage === 1 ? "opacity-30 cursor-not-allowed" : "hover:text-black"}`}
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handlePageChange(num)}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                          currentPage === num
+                            ? "bg-black text-white font-medium"
+                            : "hover:bg-stone-100 text-black"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ),
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`cursor-pointer ${currentPage === totalPages ? "opacity-30 cursor-not-allowed" : "hover:text-black"}`}
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            )}
           </>
         )}
       </main>

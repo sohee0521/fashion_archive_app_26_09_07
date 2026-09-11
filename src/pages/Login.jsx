@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 
@@ -6,6 +6,14 @@ export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // 🔥 이미 로그인된 상태라면 로그인 페이지 진입 시 바로 홈으로 이동
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("fitlog_logged_in") === "true";
+    if (isLoggedIn) {
+      navigate("/");
+    }
+  }, [navigate]);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -27,9 +35,6 @@ export default function Login() {
           <h1 className="display1 text-accent-pink italic font-normal">
             FitLog
           </h1>
-          <p className="body4 text-dark-gray">
-            Welcome back! Please enter your details.
-          </p>
         </div>
 
         {/* 로그인 폼 */}

@@ -10,7 +10,7 @@ export default function StyleDonutChart({ styleStats, isVisible }) {
         </span>
       </div>
       {styleStats.length === 0 ? (
-        <div className="w-full h-40 flex items-center justify-center text-dark-gray body4 border border-[#EBEBEB] rounded-2xl">
+        <div className="w-full h-40 flex items-center justify-center text-dark-gray body4 ">
           등록된 스타일 태그 데이터가 없습니다. 옷을 추가해 보세요!
         </div>
       ) : (

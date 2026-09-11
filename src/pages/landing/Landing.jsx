@@ -52,6 +52,12 @@ function ScrollFadeIn({ children, delay = 0, className = "" }) {
 
 export default function Landing({ onStart }) {
   const navigate = useNavigate();
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("fitlog_logged_in") === "true";
+    if (isLoggedIn) {
+      navigate("/home", { replace: true });
+    }
+  }, [navigate]);
 
   const handleStartCloset = () => {
     if (typeof onStart === "function") {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Edit2,
@@ -70,6 +70,12 @@ export default function NewLookbook() {
 
   // 로컬 스토리지 불러오기
   useEffect(() => {
+    // 🔒 [추가] 로그인 상태가 아니면 아카이브 및 룩북 데이터를 비우고 종료
+    const isLoggedIn = localStorage.getItem("fitlog_logged_in") === "true";
+    if (!isLoggedIn) {
+      setArchiveItems([]);
+      return;
+    }
     const savedArchive = localStorage.getItem("fitlog_items");
     let parsedArchiveList = [];
     if (savedArchive) {
@@ -183,7 +189,7 @@ export default function NewLookbook() {
     }
   };
 
-  //  룩북 저장 핸들러 + 첫 저장 여부 판별
+  // 룩북 저장 핸들러 + 첫 저장 여부 판별
   const handleSaveLookbook = () => {
     if (selectedItems.length < 2) {
       alert("최소 2개 이상의 아이템을 추가해주세요.");
@@ -235,11 +241,12 @@ export default function NewLookbook() {
     }
   };
 
-  // 새 룩북 작성 캔버스 초기화
+  // 새 룩북 작성 캔버스 초기화 + 최상단 스크롤 이동
   const handleResetForNewLookbook = () => {
     setModalType(null);
     setSelectedItems([]);
     setLookTitle("Unnamed");
+    window.scrollTo({ top: 0, behavior: "smooth" });
     if (isEditMode) {
       navigate("/newLookbook");
     }
@@ -410,7 +417,7 @@ export default function NewLookbook() {
 
                         {isUsed && (
                           <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
-                            <span className="caption3  text-white px-1.5 py-0.5 rounded bg-black/60">
+                            <span className="caption3 text-white px-1.5 py-0.5 rounded bg-black/60">
                               used
                             </span>
                           </div>
@@ -541,7 +548,7 @@ export default function NewLookbook() {
                       <Plus size={20} strokeWidth={1.5} />
                     </div>
                     <span className="body4 text-[#FF85C0] mt-1 whitespace-nowrap">
-                      Drop Here
+                      Drag Here!
                     </span>
                   </div>
                 );
@@ -592,11 +599,20 @@ export default function NewLookbook() {
       </main>
 
       {/* ─────────────────────────────────────────────────────────────
-          🔥 룩북 저장 모달 (문구 분기 + 버튼 통일: 아이템 추가하기 vs 새로운 룩북 만들기)
+          🔥 룩북 저장 모달 (우측 상단 X 닫기 버튼 추가 + 새 룩북 만들기 시 최상단 스크롤)
       ───────────────────────────────────────────────────────────── */}
       {modalType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-pink-100 flex flex-col items-center text-center select-none">
+          <div className="relative bg-white rounded-2xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-pink-100 flex flex-col items-center text-center select-none">
+            {/* 우측 상단 X 닫기 버튼 */}
+            <button
+              type="button"
+              onClick={() => setModalType(null)}
+              className="absolute top-4 right-4 text-dark-gray hover:text-black transition-colors cursor-pointer p-1"
+            >
+              <X size={18} strokeWidth={2} />
+            </button>
+
             {/* 상단 아이콘 & 문구 분기 */}
             {modalType === "FIRST" ? (
               <>
@@ -626,7 +642,7 @@ export default function NewLookbook() {
               </>
             )}
 
-            {/* 🔥 통일된 2개 버튼: 1. 아이템 추가하기 (/home) / 2. 새로운 룩북 만들기 */}
+            {/* 통일된 2개 버튼: 1. 아이템 추가하기 (/home) / 2. 새로운 룩북 만들기 */}
             <div className="flex gap-2.5 w-full">
               <button
                 type="button"
