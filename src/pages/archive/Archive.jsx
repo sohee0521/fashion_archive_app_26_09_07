@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+
 import hanger from "../../img/hanger.svg";
 import {
   ChevronDown,
@@ -14,14 +15,17 @@ const CATEGORIES = ["All", "Top", "Bottom", "Outer", "Shoes", "Acc"];
 
 export default function Archive() {
   const navigate = useNavigate();
+  const location = useLocation(); // 🔥 전달된 state를 받기 위한 훅
 
   // 1. 상태 관리
   const [items, setItems] = useState([]);
   const [customFolders, setCustomFolders] = useState([]);
   const [customStyles, setCustomStyles] = useState([]);
 
-  // 필터 상태
-  const [selectedFolder, setSelectedFolder] = useState("All");
+  // 필터 상태 (🔥 대시보드 등에서 넘겨준 selectedFolder가 있다면 초기값으로 우선 적용)
+  const [selectedFolder, setSelectedFolder] = useState(
+    location.state?.selectedFolder || "All",
+  );
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedStyle, setSelectedStyle] = useState("All");
 
@@ -32,8 +36,18 @@ export default function Archive() {
   // 카드별 폴더 선택 드롭다운 상태
   const [openFolderDropdownId, setOpenFolderDropdownId] = useState(null);
 
+  // 🔥 만약 페이지가 이미 열려있는 상태에서 다른 곳을 통해 state가 넘어올 경우를 대비한 처리
+  useEffect(() => {
+    if (location.state?.selectedFolder) {
+      setSelectedFolder(location.state.selectedFolder);
+    }
+  }, [location.state]);
+
+  // (이하 기존 로컬스토리지 로드 및 필터링 로직 동일...)
+
   // 2. 로컬스토리지에서 아이템 및 커스텀 목록 로드
   useEffect(() => {
+    window.scrollTo(0, 0);
     // 1) fitlog_items
     try {
       const savedItems = JSON.parse(

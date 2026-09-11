@@ -183,7 +183,7 @@ export default function NewLookbook() {
     }
   };
 
-  // 🔥 룩북 저장 핸들러 + 첫 저장 여부 판별
+  //  룩북 저장 핸들러 + 첫 저장 여부 판별
   const handleSaveLookbook = () => {
     if (selectedItems.length < 2) {
       alert("최소 2개 이상의 아이템을 추가해주세요.");
@@ -633,6 +633,7 @@ export default function NewLookbook() {
                 onClick={() => {
                   setModalType(null);
                   navigate("/home");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 className="flex-1 py-2.5 rounded-full border border-[#EBEBEB] text-dark-gray body4 hover:bg-stone-50 transition-colors cursor-pointer"
               >

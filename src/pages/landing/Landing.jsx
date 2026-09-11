@@ -219,7 +219,14 @@ export default function Landing({ onStart }) {
           >
             <button
               type="button"
-              onClick={handleStartCloset}
+              onClick={() => {
+                if (typeof onStart === "function") {
+                  onStart();
+                } else {
+                  navigate("/home");
+                }
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
               className="px-[40px] py-[20px] rounded-full bg-black text-white flex items-center gap-2.5 hover:bg-black/60 transition-all cursor-pointer shadow-lg active:scale-95 select-none"
             >
               <span className="caption2">내 옷장 채우러 가기</span>

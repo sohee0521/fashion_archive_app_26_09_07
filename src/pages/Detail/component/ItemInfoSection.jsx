@@ -156,19 +156,11 @@ export default function ItemInfoSection({
           className={`w-full flex flex-col ${hasUrl ? "lg:flex-row" : ""} gap-10 items-stretch`}
         >
           {/* 상품 프리뷰 윈도우 (링크 있을 때만) */}
+          {/* 상품 프리뷰 윈도우 (링크 있을 때만) */}
           {hasUrl && (
             <div className="w-full lg:w-[58%] border border-gray/40 rounded-sm bg-white overflow-hidden flex flex-col shadow-2xs">
               <div className="px-4 py-2.5 border-b border-gray/30 bg-[#FAFAFA] flex justify-between items-center select-none">
                 <span className="caption3 text-dark-gray">Product Preview</span>
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="caption3 text-black hover:text-accent-pink flex items-center gap-1"
-                >
-                  <span>OPEN</span>
-                  <ArrowUpRight size={15} strokeWidth={1.5} />
-                </a>
               </div>
 
               <div className="relative w-full h-[480px] sm:h-[560px] bg-white overflow-hidden group">
@@ -176,7 +168,26 @@ export default function ItemInfoSection({
                   src={item.url}
                   title="Product Preview"
                   className="w-full h-full border-0 pointer-events-none"
+                  // 🔥 iframe 로딩 실패나 보안 차단 시 대비 (대부분의 브라우저는 보안상 iframe 에러를 직접 잡기 힘들므로 폴백 레이어를 함께 활용합니다)
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                  }}
                 />
+
+                {/* 🔥 [특급 개선] iframe이 보안상 막혀서 안 보일 때 유저를 위한 안내 배너 및 버튼 */}
+                <div className="absolute inset-0 z-0 flex flex-col items-center justify-center p-6 text-center bg-[#FAFAFA] pointer-events-none">
+                  <div className="w-12 h-12 rounded-full bg-base-pink/50 text-accent-pink flex items-center justify-center mb-3">
+                    <ArrowUpRight size={22} strokeWidth={1.5} />
+                  </div>
+                  <p className="body3 text-black font-medium mb-1">
+                    미리보기가 제한된 링크예요
+                  </p>
+                  <p className="body4 text-dark-gray mb-5">
+                    원본 쇼핑몰에서 상품을 확인해 보세요!
+                  </p>
+                </div>
+
+                {/* 마우스 올렸을 때 전체 오버레이 링크 */}
                 <a
                   href={item.url}
                   target="_blank"

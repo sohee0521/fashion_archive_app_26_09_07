@@ -280,7 +280,7 @@ export default function LookbookSection() {
                             key={`${it.id}-${itemIdx}`}
                             className={`absolute flex flex-col items-center gap-0.5 ${positionClass}`}
                           >
-                            <div className="w-[68px] h-[68px] rounded-full bg-white border border-gray/40 overflow-hidden flex items-center justify-center shadow-xs">
+                            <div className="w-[72px] h-[72px] rounded-full bg-white border border-gray/40 overflow-hidden flex items-center justify-center shadow-xs">
                               {it.imageUrl ? (
                                 <img
                                   src={it.imageUrl}

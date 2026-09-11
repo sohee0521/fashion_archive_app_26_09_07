@@ -46,8 +46,35 @@ function ScrollFadeIn({ children, delay = 0, className = "" }) {
   );
 }
 
-export default function ClosetSection({ items, setIsFormOpen }) {
+export default function ClosetSection({ items: initialItems, setIsFormOpen }) {
   const navigate = useNavigate();
+
+  // 🔥 실시간으로 로컬스토리지의 최신 아이템을 담을 내부 State
+  const [items, setItems] = useState(initialItems || []);
+
+  // 🔥 로컬스토리지 변경 및 커스텀 신호 감지 (저장 즉시 새로고침 없이 반영)
+  useEffect(() => {
+    const loadLatestItems = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem("fitlog_items") || "[]");
+        setItems(saved);
+      } catch (e) {
+        console.error("아이템 동기화 실패:", e);
+      }
+    };
+
+    // 처음 렌더링 시 불러오기
+    loadLatestItems();
+
+    // 커스텀 신호 및 다른 탭 감지 이벤트 등록
+    window.addEventListener("fitlog_storage_updated", loadLatestItems);
+    window.addEventListener("storage", loadLatestItems);
+
+    return () => {
+      window.removeEventListener("fitlog_storage_updated", loadLatestItems);
+      window.removeEventListener("storage", loadLatestItems);
+    };
+  }, [initialItems]);
 
   // 5개 카드의 크기 및 위치 규격
   const emptyCardTemplates = [

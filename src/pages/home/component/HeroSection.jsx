@@ -324,6 +324,7 @@ export default function HeroSection({
       );
       const updatedItems = [newItem, ...currentItems];
       localStorage.setItem("fitlog_items", JSON.stringify(updatedItems));
+      window.dispatchEvent(new Event("fitlog_storage_updated"));
     } catch (err) {
       console.error(err);
     }
@@ -413,17 +414,15 @@ export default function HeroSection({
             {hasUrl && (
               <div className="border border-gray/30 rounded-lg overflow-hidden mb-8 bg-white shadow-2xs">
                 <div className="bg-[#FAFAFA] px-4 py-3 border-b border-gray/20 flex justify-between items-center select-none">
-                  <span className="caption3 tracking-widest text-dark-gray font-medium">
-                    LINK PREVIEW
-                  </span>
+                  <span className="body4 text-dark-gray ">Product Preview</span>
                   <a
                     href={formData.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="caption3 underline underline-offset-4 text-black hover:text-accent-pink flex items-center gap-1"
+                    className="caption3  text-black hover:text-accent-pink flex items-center gap-1"
                   >
-                    <span>OPEN</span>
-                    <ExternalLink size={13} strokeWidth={1.5} />
+                    <span className="body4 text-[14px]">OPEN</span>
+                    <ExternalLink size={18} strokeWidth={1.5} />
                   </a>
                 </div>
 
@@ -445,18 +444,12 @@ export default function HeroSection({
 
                   {/* 텍스트 정보 */}
                   <div className="flex flex-col justify-center overflow-hidden w-full gap-1">
-                    <span className="caption3 text-accent-pink uppercase tracking-widest font-medium">
-                      AUTO COLLECTED
-                    </span>
                     <h4 className="body2 font-semibold text-black truncate">
                       {formData.title ||
                         (isFetchingOg
                           ? "상품 정보를 불러오는 중입니다..."
-                          : "제목이 지정되지 않았습니다")}
+                          : "상품명이 지정되지 않았습니다")}
                     </h4>
-                    <p className="caption3 text-dark-gray truncate">
-                      {formData.url}
-                    </p>
                   </div>
                 </div>
               </div>
@@ -499,7 +492,7 @@ export default function HeroSection({
                   value={formData.title}
                   placeholder={
                     hasUrl
-                      ? "상품명을 입력해주세요 (미입력 시 Untitled)"
+                      ? "상품명을 입력해주세요"
                       : "상품명을 입력해주세요 (필수)"
                   }
                   onChange={(e) =>
